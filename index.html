@@ -73,8 +73,9 @@ h1{font-size:31px;font-weight:800;letter-spacing:-.02em}
 .row{display:flex;gap:10px;flex-wrap:wrap}
 label{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:5px}
 input,select{
-  font-family:inherit;font-size:15px;color:var(--ink);background:#fff;
-  border:1px solid var(--line);border-radius:var(--radius);padding:9px 10px;width:100%;
+  font-family:inherit;font-size:16px;color:var(--ink);background:#fff;
+  border:1px solid var(--line);border-radius:var(--radius);padding:10px;width:100%;
+  -webkit-appearance:none;appearance:none;
 }
 input.num-in{font-family:'Space Mono',monospace;font-weight:700}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--violet);outline-offset:1px}
@@ -458,7 +459,9 @@ render();
 if(connected()){
   status('on','Conectado');
   run(async()=>{ await pull(); await push(); }, 'Al día');
-  window.addEventListener('focus', ()=>{ if(!busy) run(pull,'Al día'); });
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible' && !busy) run(pull,'Al día');
+  });
 }
 </script>
 </body>
