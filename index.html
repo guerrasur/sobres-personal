@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sobres — gastos diarios</title>
+<meta name="description" content="Un sobre por día. Registro simple de gastos.">
+<meta name="theme-color" content="#242424">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon-64.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sobres">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E9E6EF;
+  --paper-2:#F5F3F8;
+  --ink:#221C33;
+  --ink-soft:#5B5470;
+  --violet:#4B2FA0;
+  --teal:#0F6E63;
+  --ochre:#B86A12;
+  --clay:#9E2F27;
+  --line:rgba(34,28,51,.14);
+  --radius:3px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 64px;
+}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:'Bricolage Grotesque','Public Sans',sans-serif;margin:0;line-height:1.05}
+.num{font-family:'Space Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+/* header */
+header{padding:34px 0 26px;border-bottom:1px solid var(--line)}
+h1{font-size:31px;font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--ink-soft);font-size:13px;margin-top:6px}
+
+/* hoy */
+.today{padding:30px 0 8px}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+.big{font-family:'Space Mono',monospace;font-size:52px;font-weight:700;letter-spacing:-.03em;line-height:1;margin:10px 0 4px}
+.big.ok{color:var(--teal)} .big.warn{color:var(--ochre)} .big.over{color:var(--clay)}
+.big-note{font-size:13px;color:var(--ink-soft)}
+
+/* signature: tira de sobres */
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:26px 0 8px}
+.env{position:relative;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper-2);height:88px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.env:hover{border-color:var(--violet)}
+.env.today-env{border-color:var(--ink);border-width:1.5px}
+.env .fill{position:absolute;left:0;right:0;bottom:0;background:var(--violet);opacity:.16;transition:height .35s ease}
+.env.overflow .fill{background:var(--clay);opacity:.24}
+.env .d{position:absolute;top:6px;left:0;right:0;text-align:center;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.env .v{position:absolute;bottom:7px;left:0;right:0;text-align:center;font-family:'Space Mono',monospace;font-size:11px;font-weight:700}
+.strip-legend{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft);padding-top:6px;border-top:1px solid var(--line);margin-top:14px}
+
+/* form */
+.card{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-top:26px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+label{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:5px}
+input,select{
+  font-family:inherit;font-size:15px;color:var(--ink);background:#fff;
+  border:1px solid var(--line);border-radius:var(--radius);padding:9px 10px;width:100%;
+}
+input.num-in{font-family:'Space Mono',monospace;font-weight:700}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--violet);outline-offset:1px}
+.f-amount{flex:1 1 130px} .f-cat{flex:2 1 200px} .f-note{flex:2 1 180px} .f-date{flex:1 1 150px}
+button{
+  font-family:'Public Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;
+  background:var(--violet);color:#fff;border:1px solid var(--violet);
+  border-radius:var(--radius);padding:10px 18px;transition:opacity .15s;
+}
+button:hover{opacity:.86}
+button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+button.mini{font-size:12px;padding:5px 10px}
+
+/* tabla */
+section{margin-top:38px}
+h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.h-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.item .tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:3px 7px;border-radius:2px;white-space:nowrap}
+.tag.diario{background:rgba(75,47,160,.12);color:var(--violet)}
+.tag.transporte{background:rgba(15,110,99,.13);color:var(--teal)}
+.tag.unico{background:rgba(184,106,18,.14);color:var(--ochre)}
+.item .desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .when{font-size:12px;color:var(--ink-soft);white-space:nowrap}
+.item .amt{font-family:'Space Mono',monospace;font-weight:700;white-space:nowrap}
+.item .del{background:none;border:none;color:var(--ink-soft);font-size:16px;padding:2px 4px;line-height:1}
+.item .del:hover{color:var(--clay)}
+.empty{padding:26px 0;color:var(--ink-soft);font-size:14px}
+
+/* totales mes */
+.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-top:14px}
+.tot{background:var(--paper-2);padding:14px}
+.tot .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+.tot .v{font-family:'Space Mono',monospace;font-size:21px;font-weight:700;margin-top:5px}
+.tot.violet .v{color:var(--violet)} .tot.teal .v{color:var(--teal)} .tot.ochre .v{color:var(--ochre)}
+
+/* config */
+details{margin-top:38px;border-top:1px solid var(--line);padding-top:16px}
+summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-soft);letter-spacing:.04em}
+.cfg{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.cfg > div{flex:1 1 150px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.sync-box{margin-top:20px;padding:16px;background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius)}
+.sync-head{display:flex;align-items:center;justify-content:space-between}
+.sync-copy{font-size:13px;color:var(--ink-soft);margin:8px 0 14px;max-width:56ch}
+.sync-dot{width:9px;height:9px;border-radius:50%;background:var(--ink-soft);opacity:.35}
+.sync-dot.on{background:var(--teal);opacity:1}
+.sync-dot.busy{background:var(--ochre);opacity:1}
+.sync-dot.err{background:var(--clay);opacity:1}
+.sync-msg{font-size:12px;color:var(--ink-soft);align-self:center}
+footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
+@media (max-width:520px){
+  .big{font-size:42px}
+  .env{height:74px}
+  .env .v{font-size:10px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Sobres</h1>
+  <div class="sub">Un sobre por día. Cuando se vacía, se vació.</div>
+</header>
+
+<div class="today">
+  <div class="eyebrow">Queda hoy</div>
+  <div class="big num" id="todayLeft">—</div>
+  <div class="big-note" id="todayNote"></div>
+</div>
+
+<div class="strip" id="strip"></div>
+<div class="strip-legend">
+  <span id="weekRange"></span>
+  <span id="weekLeft"></span>
+</div>
+
+<div class="card">
+  <div class="row">
+    <div class="f-amount"><label for="amount">Monto</label><input class="num-in" id="amount" type="number" inputmode="numeric" placeholder="0"></div>
+    <div class="f-cat"><label for="cat">Sale de</label>
+      <select id="cat">
+        <option value="diario">Sobre del día</option>
+        <option value="transporte">Transporte</option>
+        <option value="unico">Gasto único</option>
+      </select>
+    </div>
+    <div class="f-note"><label for="note">Qué fue</label><input id="note" type="text" placeholder="café, kiosco, almuerzo"></div>
+    <div class="f-date"><label for="date">Fecha</label><input id="date" type="date"></div>
+  </div>
+  <div style="margin-top:14px"><button id="add">Anotar gasto</button></div>
+</div>
+
+<section>
+  <div class="h-row"><h2>Este mes</h2><span class="eyebrow" id="monthName"></span></div>
+  <div class="totals">
+    <div class="tot violet"><div class="k">Sobres diarios</div><div class="v num" id="mDiario">—</div></div>
+    <div class="tot teal"><div class="k">Transporte</div><div class="v num" id="mTransporte">—</div></div>
+    <div class="tot ochre"><div class="k">Únicos</div><div class="v num" id="mUnico">—</div></div>
+    <div class="tot"><div class="k">Total</div><div class="v num" id="mTotal">—</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="h-row"><h2>Movimientos</h2><span class="eyebrow" id="count"></span></div>
+  <div id="list"></div>
+</section>
+
+<details>
+  <summary>Ajustes y respaldo</summary>
+  <div class="cfg">
+    <div><label for="cfgDaily">Sobre diario</label><input class="num-in" id="cfgDaily" type="number"></div>
+    <div><label for="cfgStart">Empieza la semana</label>
+      <select id="cfgStart">
+        <option value="1">Lunes</option><option value="0">Domingo</option>
+      </select>
+    </div>
+  </div>
+  <div class="sync-box">
+    <div class="sync-head">
+      <span class="eyebrow">Sincronizar entre dispositivos</span>
+      <span class="sync-dot" id="syncDot" title="Sin configurar"></span>
+    </div>
+    <p class="sync-copy">Guarda una copia de tus gastos en un Gist privado de GitHub, así el celular y la computadora ven lo mismo. Necesitás un token con permiso sobre Gists.</p>
+    <div class="cfg">
+      <div><label for="ghToken">Token de GitHub</label><input id="ghToken" type="password" placeholder="github_pat_..." autocomplete="off"></div>
+      <div><label for="ghGist">ID del Gist</label><input id="ghGist" type="text" placeholder="se crea solo la primera vez"></div>
+    </div>
+    <div class="tools">
+      <button class="mini" id="syncNow">Sincronizar ahora</button>
+      <button class="ghost mini" id="syncOff">Desconectar</button>
+      <span class="sync-msg" id="syncMsg"></span>
+    </div>
+  </div>
+
+  <div class="tools">
+    <button class="ghost mini" id="expCsv">Descargar CSV</button>
+    <button class="ghost mini" id="expJson">Guardar respaldo</button>
+    <button class="ghost mini" id="impBtn">Cargar respaldo</button>
+    <input type="file" id="impFile" accept=".json" hidden>
+    <button class="ghost mini" id="wipe">Borrar todo</button>
+  </div>
+  <footer>
+    Sin sincronizar, los datos quedan solo en este navegador y no necesitan internet. Si limpiás los datos del navegador, se pierden.
+    Con sincronización, además viajan a un Gist privado tuyo. El token queda guardado en este dispositivo: no lo pongas en un repositorio público ni en una computadora compartida.
+    Igual conviene bajar el respaldo cada tanto.
+  </footer>
+</details>
+
+</div>
+
+<script>
+const KEY = 'sobres.v1';
+const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
+const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const DAYS = ['dom','lun','mar','mié','jue','vie','sáb'];
+
+let state = load();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { daily:10000, weekStart:1, deleted:[], updatedAt:0, items:[
+    {id:1, date:todayISO(), amount:3100,  cat:'diario',     note:'donas para la merienda'},
+    {id:2, date:todayISO(), amount:5000,  cat:'transporte', note:'subte'},
+    {id:3, date:todayISO(), amount:38000, cat:'unico',      note:'funda y vidrio del celular'}
+  ]};
+}
+function save(touch){
+  if(touch !== false) state.updatedAt = Date.now();
+  if(!Array.isArray(state.deleted)) state.deleted = [];
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  if(touch !== false) schedulePush();
+}
+
+function weekDays(){
+  const t = new Date(todayISO()+'T00:00:00');
+  const diff = (t.getDay() - state.weekStart + 7) % 7;
+  const start = new Date(t); start.setDate(t.getDate()-diff);
+  return Array.from({length:7},(_,i)=>{ const d=new Date(start); d.setDate(start.getDate()+i);
+    return { iso:d.toISOString().slice(0,10), dow:DAYS[d.getDay()], n:d.getDate() }; });
+}
+const spentOn = iso => state.items.filter(x=>x.date===iso && x.cat==='diario').reduce((s,x)=>s+x.amount,0);
+
+function render(){
+  const today = todayISO();
+  const spent = spentOn(today), left = state.daily - spent;
+  const el = document.getElementById('todayLeft');
+  el.textContent = fmt(left);
+  el.className = 'big num ' + (left < 0 ? 'over' : left < state.daily*0.25 ? 'warn' : 'ok');
+  document.getElementById('todayNote').textContent =
+    left < 0 ? `Te pasaste ${fmt(-left)} del sobre de hoy.`
+             : `Gastaste ${fmt(spent)} de ${fmt(state.daily)}.`;
+
+  const days = weekDays();
+  document.getElementById('strip').innerHTML = days.map(d=>{
+    const s = spentOn(d.iso), pct = Math.min(100, state.daily ? s/state.daily*100 : 0);
+    const future = d.iso > today;
+    return `<div class="env ${d.iso===today?'today-env':''} ${s>state.daily?'overflow':''}" data-date="${d.iso}" title="${d.iso}">
+      <span class="fill" style="height:${pct}%"></span>
+      <span class="d">${d.dow} ${d.n}</span>
+      <span class="v" style="opacity:${future&&!s?0.3:1}">${s?fmt(s).replace('$','').trim():'–'}</span>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.env').forEach(e=>e.onclick=()=>{
+    document.getElementById('date').value = e.dataset.date;
+    document.getElementById('amount').focus();
+  });
+
+  const wSpent = days.reduce((s,d)=>s+spentOn(d.iso),0);
+  const wLeft = state.daily*7 - wSpent;
+  document.getElementById('weekRange').textContent = `Semana del ${days[0].n} al ${days[6].n} · sobre semanal ${fmt(state.daily*7)}`;
+  document.getElementById('weekLeft').textContent = wLeft>=0 ? `Quedan ${fmt(wLeft)}` : `Excedido ${fmt(-wLeft)}`;
+
+  const mk = today.slice(0,7);
+  const inMonth = state.items.filter(x=>x.date.startsWith(mk));
+  const by = c => inMonth.filter(x=>x.cat===c).reduce((s,x)=>s+x.amount,0);
+  document.getElementById('mDiario').textContent = fmt(by('diario'));
+  document.getElementById('mTransporte').textContent = fmt(by('transporte'));
+  document.getElementById('mUnico').textContent = fmt(by('unico'));
+  document.getElementById('mTotal').textContent = fmt(inMonth.reduce((s,x)=>s+x.amount,0));
+  document.getElementById('monthName').textContent =
+    new Date(today+'T00:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+
+  const items = [...state.items].sort((a,b)=> b.date.localeCompare(a.date) || b.id-a.id);
+  const labels = {diario:'diario', transporte:'transporte', unico:'único'};
+  document.getElementById('count').textContent = items.length ? `${items.length} anotados` : '';
+  document.getElementById('list').innerHTML = items.length ? items.map(x=>`
+    <div class="item">
+      <span class="tag ${x.cat}">${labels[x.cat]}</span>
+      <span class="desc">${(x.note||'—').replace(/</g,'&lt;')}</span>
+      <span class="when">${x.date.slice(8)}/${x.date.slice(5,7)}</span>
+      <span class="amt">${fmt(x.amount)}</span>
+      <button class="del" data-id="${x.id}" aria-label="Borrar">×</button>
+    </div>`).join('')
+    : `<div class="empty">Todavía no anotaste nada. Empezá por el primer café.</div>`;
+  document.querySelectorAll('.del').forEach(b=>b.onclick=()=>{
+    state.deleted = [...(state.deleted||[]), Number(b.dataset.id)];
+    state.items = state.items.filter(x=>x.id!=b.dataset.id); save(); render();
+  });
+
+  document.getElementById('cfgDaily').value = state.daily;
+  document.getElementById('cfgStart').value = state.weekStart;
+}
+
+document.getElementById('date').value = todayISO();
+document.getElementById('add').onclick = () => {
+  const a = Math.round(Number(document.getElementById('amount').value));
+  if(!a || a<=0){ document.getElementById('amount').focus(); return; }
+  state.items.push({
+    id: Date.now(),
+    date: document.getElementById('date').value || todayISO(),
+    amount: a,
+    cat: document.getElementById('cat').value,
+    note: document.getElementById('note').value.trim()
+  });
+  save(); 
+  document.getElementById('amount').value=''; document.getElementById('note').value='';
+  render(); document.getElementById('amount').focus();
+};
+document.getElementById('amount').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('add').click(); });
+document.getElementById('note').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('add').click(); });
+
+document.getElementById('cfgDaily').onchange = e => { state.daily = Math.max(0,Math.round(Number(e.target.value)||0)); save(); render(); };
+document.getElementById('cfgStart').onchange = e => { state.weekStart = Number(e.target.value); save(); render(); };
+
+function download(name, content, type){
+  const url = URL.createObjectURL(new Blob([content],{type}));
+  const a = document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+}
+document.getElementById('expCsv').onclick = () => {
+  const rows = [['fecha','categoria','monto','detalle'],
+    ...[...state.items].sort((a,b)=>a.date.localeCompare(b.date))
+      .map(x=>[x.date,x.cat,x.amount,(x.note||'').replace(/"/g,'""')])];
+  download('gastos.csv', '\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n'), 'text/csv');
+};
+document.getElementById('expJson').onclick = () => download('sobres-respaldo.json', JSON.stringify(state), 'application/json');
+document.getElementById('impBtn').onclick = () => document.getElementById('impFile').click();
+document.getElementById('impFile').onchange = e => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => { try{ const d=JSON.parse(r.result); if(d && Array.isArray(d.items)){ state=d; save(); render(); } }catch(err){ alert('El archivo no se pudo leer.'); } };
+  r.readAsText(f);
+};
+document.getElementById('wipe').onclick = () => {
+  if(confirm('Se borran todos los gastos anotados. ¿Seguro?')){ state={daily:state.daily,weekStart:state.weekStart,items:[]}; save(); render(); }
+};
+
+/* ---------- sincronización con un Gist privado ---------- */
+const SKEY = 'sobres.sync';
+const FILE = 'sobres.json';
+let sync = (()=>{ try{ return JSON.parse(localStorage.getItem(SKEY)) || {}; }catch(e){ return {}; } })();
+let pushTimer = null, busy = false;
+
+const dot = document.getElementById('syncDot');
+const msg = document.getElementById('syncMsg');
+function status(kind, text){
+  dot.className = 'sync-dot' + (kind ? ' '+kind : '');
+  dot.title = text || '';
+  msg.textContent = text || '';
+}
+function saveSync(){ try{ localStorage.setItem(SKEY, JSON.stringify(sync)); }catch(e){} }
+const connected = () => !!(sync.token);
+
+async function gh(path, opts={}){
+  const r = await fetch('https://api.github.com'+path, {
+    ...opts,
+    headers:{ 'Authorization':'Bearer '+sync.token, 'Accept':'application/vnd.github+json', ...(opts.headers||{}) }
+  });
+  if(!r.ok) throw new Error(r.status === 401 ? 'El token no es válido o no tiene permiso sobre Gists.' : 'GitHub respondió '+r.status+'.');
+  return r.json();
+}
+
+function merge(remote){
+  if(!remote || !Array.isArray(remote.items)) return;
+  const deleted = new Set([...(state.deleted||[]), ...(remote.deleted||[])]);
+  const byId = new Map();
+  [...remote.items, ...state.items].forEach(x=>{ if(!deleted.has(Number(x.id))) byId.set(String(x.id), x); });
+  const remoteNewer = (remote.updatedAt||0) > (state.updatedAt||0);
+  state = {
+    daily: remoteNewer ? (remote.daily ?? state.daily) : state.daily,
+    weekStart: remoteNewer ? (remote.weekStart ?? state.weekStart) : state.weekStart,
+    deleted: [...deleted],
+    updatedAt: Math.max(state.updatedAt||0, remote.updatedAt||0),
+    items: [...byId.values()]
+  };
+}
+
+async function pull(){
+  if(!connected() || !sync.gist) return;
+  const g = await gh('/gists/'+sync.gist);
+  const f = g.files && g.files[FILE];
+  if(!f) return;
+  const raw = f.truncated ? await (await fetch(f.raw_url)).text() : f.content;
+  merge(JSON.parse(raw));
+  save(false); render();
+}
+
+async function push(){
+  if(!connected()) return;
+  const body = { files:{ [FILE]:{ content: JSON.stringify(state, null, 1) } } };
+  if(sync.gist){
+    await gh('/gists/'+sync.gist, { method:'PATCH', body: JSON.stringify(body) });
+  }else{
+    const g = await gh('/gists', { method:'POST', body: JSON.stringify({ ...body, public:false, description:'Sobres — gastos' }) });
+    sync.gist = g.id; saveSync();
+    document.getElementById('ghGist').value = g.id;
+  }
+}
+
+function schedulePush(){
+  if(!connected()) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(()=>run(push, 'Guardado en GitHub'), 1200);
+}
+
+async function run(fn, okText){
+  if(busy) return; busy = true;
+  status('busy','Sincronizando…');
+  try{ await fn(); status('on', okText); }
+  catch(e){ status('err', e.message); }
+  finally{ busy = false; }
+}
+
+document.getElementById('ghToken').value = sync.token || '';
+document.getElementById('ghGist').value = sync.gist || '';
+document.getElementById('ghToken').onchange = e => { sync.token = e.target.value.trim(); saveSync(); status(connected()?'on':'', connected()?'Token guardado':''); };
+document.getElementById('ghGist').onchange  = e => { sync.gist  = e.target.value.trim(); saveSync(); };
+document.getElementById('syncNow').onclick = () => run(async()=>{ await pull(); await push(); }, 'Al día');
+document.getElementById('syncOff').onclick = () => {
+  sync = {}; saveSync();
+  document.getElementById('ghToken').value=''; document.getElementById('ghGist').value='';
+  status('', 'Desconectado. Los gastos siguen guardados acá.');
+};
+
+render();
+if(connected()){
+  status('on','Conectado');
+  run(async()=>{ await pull(); await push(); }, 'Al día');
+  window.addEventListener('focus', ()=>{ if(!busy) run(pull,'Al día'); });
+}
+</script>
+</body>
+</html>
