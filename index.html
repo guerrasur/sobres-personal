@@ -39,6 +39,7 @@ body{
   font-size:15px;
   line-height:1.5;
   -webkit-font-smoothing:antialiased;
+  -webkit-user-select:text;user-select:text;
   padding:0 0 64px;
 }
 .wrap{max-width:760px;margin:0 auto;padding:0 20px}
@@ -72,9 +73,15 @@ h1{font-size:31px;font-weight:800;letter-spacing:-.02em}
 .card{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-top:26px}
 .row{display:flex;gap:10px;flex-wrap:wrap}
 label{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:5px}
-input,select{
+input,select,textarea{
   font-family:inherit;font-size:16px;color:var(--ink);background:#fff;
   border:1px solid var(--line);border-radius:var(--radius);padding:10px;width:100%;
+  -webkit-user-select:text;user-select:text;
+  -webkit-touch-callout:default;
+  touch-action:manipulation;
+  pointer-events:auto;
+}
+input[type="number"],input[type="text"],input[type="date"],input[type="password"]{
   -webkit-appearance:none;appearance:none;
 }
 input.num-in{font-family:'Space Mono',monospace;font-weight:700}
@@ -286,7 +293,6 @@ function render(){
   }).join('');
   document.querySelectorAll('.env').forEach(e=>e.onclick=()=>{
     document.getElementById('date').value = e.dataset.date;
-    document.getElementById('amount').focus();
   });
 
   const wSpent = days.reduce((s,d)=>s+spentOn(d.iso),0);
