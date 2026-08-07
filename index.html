@@ -170,6 +170,20 @@ button:disabled{opacity:.4;cursor:default}
 button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
 button.mini{font-size:12px;padding:5px 10px}
 
+/* editar: el formulario de arriba se reusa, y tiene que quedar claro */
+.card.editing{border-color:var(--violet);box-shadow:0 0 0 1px var(--violet) inset}
+.form-title{margin-bottom:12px;color:var(--violet)}
+.form-title:empty{display:none}
+
+/* deshacer un borrado */
+.undo{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;
+  padding:11px 14px;border-radius:var(--radius);font-size:13px;
+  background:var(--paper-2);border:1px solid var(--line);
+}
+.undo[hidden]{display:none}
+.undo button{margin-left:auto;background:transparent;color:var(--violet);border-color:var(--violet)}
+
 /* tabla */
 section{margin-top:38px}
 h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
@@ -180,6 +194,14 @@ h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
 .tag.transporte{background:rgba(15,110,99,.13);color:var(--teal)}
 .tag.unico{background:rgba(184,106,18,.14);color:var(--ochre)}
 .tag.ingreso{background:rgba(15,110,99,.13);color:var(--teal)}
+.item .edit{
+  flex:1;min-width:0;display:flex;align-items:center;gap:12px;
+  background:none;border:none;padding:0;margin:0;font:inherit;color:inherit;
+  text-align:left;cursor:pointer;touch-action:manipulation;
+}
+.item .edit:hover{opacity:1}
+.item .edit:hover .desc{color:var(--violet)}
+.item.editing{background:rgba(75,47,160,.06)}
 .item .desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .item .when{font-size:12px;color:var(--ink-soft);white-space:nowrap}
 .item .amt{font-family:var(--mono);font-weight:700;white-space:nowrap}
@@ -224,7 +246,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <header>
   <h1>Sobres</h1>
-  <div class="ver">v1.3.0</div>
+  <div class="ver">v1.4.0</div>
   <div class="sub">Un sobre por día. Cuando se vacía, se vació.</div>
   <div class="netbar" id="netBar" hidden></div>
   <div class="update" id="updateBar" hidden>
@@ -264,7 +286,8 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
   <div id="tallyList" hidden></div>
 </div>
 
-<div class="card">
+<div class="card" id="form">
+  <div class="eyebrow form-title" id="formTitle"></div>
   <div class="row">
     <div class="f-amount"><label for="amount">Monto</label><input class="num-in" id="amount" type="number" inputmode="numeric" placeholder="0"></div>
     <div class="f-cat"><label for="cat">Sale de</label>
@@ -277,7 +300,15 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
     <div class="f-note"><label for="note">Qué fue</label><input id="note" type="text" placeholder="café, kiosco, almuerzo"></div>
     <div class="f-date"><label for="date">Fecha</label><input id="date" type="date"></div>
   </div>
-  <div style="margin-top:14px"><button id="add">Anotar gasto</button></div>
+  <div class="tools" style="margin-top:14px">
+    <button id="add">Anotar gasto</button>
+    <button class="ghost" id="cancelEdit" hidden>Cancelar</button>
+  </div>
+</div>
+
+<div class="undo" id="undoBar" hidden>
+  <span id="undoWhat"></span>
+  <button class="mini" id="undoBtn">Deshacer</button>
 </div>
 
 <section>
@@ -373,7 +404,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <script>
 const KEY = 'sobres.v1';
-const SCHEMA = 3;
+const SCHEMA = 4;
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
 const plain = n => new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n||0);
 const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -400,6 +431,8 @@ function addMonths(iso, n){
    schema 2: agrega periods[] con ingresos y presupuesto de transporte,
              y dailyMode ('auto' | 'manual').
    schema 3: agrega closed[], el cierre de cada día ya pasado.
+   schema 4: agrega updatedAt por item, para que al editar en un dispositivo
+             la fusión se quede con esa versión y no con la anterior.
    migrate() es la única puerta de entrada: localStorage, Gist y respaldos
    importados pasan por acá. Si el dato viene de un schema más nuevo que el
    que entiende esta copia de la app, no se toca: se avisa y listo. */
@@ -417,6 +450,7 @@ function migrate(raw){
   let d = raw;
   if(from < 2) d = up1to2(d);
   if(from < 3) d = up2to3(d);
+  if(from < 4) d = up3to4(d);
   return {ok:true, from, migrated:from < SCHEMA, state:normalize(d)};
 }
 
@@ -441,6 +475,13 @@ function up1to2(d){
    solos en el primer arranque. */
 function up2to3(d){
   return { ...d, schema:3, closed:[] };
+}
+
+/* No hay registro de cuándo se tocó cada gasto: arrancan en 0. Cualquier
+   edición posterior le gana, que es lo que importa. Inventar una fecha sería
+   darle a un gasto viejo la última palabra en una fusión. */
+function up3to4(d){
+  return { ...d, schema:4, items:d.items.map(x => ({ ...x, updatedAt: int(x && x.updatedAt) })) };
 }
 
 function normalize(d){
@@ -474,7 +515,7 @@ function normalize(d){
     items: d.items.filter(x => x && x.date).map(x => ({
       id: x.id ?? uid(), date:String(x.date).slice(0,10), amount:int(x.amount),
       cat: ['diario','transporte','unico'].includes(x.cat) ? x.cat : 'diario',
-      note: String(x.note||'')
+      note: String(x.note||''), updatedAt: int(x.updatedAt)
     }))
   };
 }
@@ -712,19 +753,21 @@ function render(){
   const labels = {diario:'diario', transporte:'transporte', unico:'único'};
   document.getElementById('count').textContent = items.length ? `${items.length} anotados` : '';
   document.getElementById('list').innerHTML = items.length ? items.map(x=>`
-    <div class="item">
-      <span class="tag ${x.cat}">${labels[x.cat]}</span>
-      <span class="desc">${esc(x.note||'—')}</span>
+    <div class="item${String(x.id)===String(editandoId)?' editing':''}">
+      ${blocked ? `<span class="tag ${x.cat}">${labels[x.cat]}</span><span class="desc">${esc(x.note||'—')}</span>`
+        : `<button class="edit" data-edit="${x.id}" aria-label="Editar ${esc(x.note||'gasto')}">
+             <span class="tag ${x.cat}">${labels[x.cat]}</span>
+             <span class="desc">${esc(x.note||'—')}</span>
+           </button>`}
       <span class="when">${x.date.slice(8)}/${x.date.slice(5,7)}</span>
       <span class="amt">${fmt(x.amount)}</span>
       ${blocked?'':`<button class="del" data-id="${x.id}" aria-label="Borrar">×</button>`}
     </div>`).join('')
     : `<div class="empty">Todavía no anotaste nada. Empezá por el primer café.</div>`;
-  document.querySelectorAll('.del[data-id]').forEach(b=>b.onclick=()=>{
-    state.deleted = [...(state.deleted||[]), Number(b.dataset.id)];
-    state.items = state.items.filter(x=>x.id!=b.dataset.id);
-    markPending(b.dataset.id); save(); render();
-  });
+  document.querySelectorAll('.del[data-id]').forEach(b=>b.onclick=()=>borrarItem(b.dataset.id));
+  document.querySelectorAll('.edit[data-edit]').forEach(b=>b.onclick=()=>editarItem(b.dataset.edit));
+  renderForm();
+  renderUndo();
 
   document.getElementById('cfgMode').value = state.dailyMode;
   document.getElementById('cfgDaily').value = state.daily;
@@ -772,6 +815,21 @@ function renderDaily(info){
   else if(c.pool <= 0) rows.push(`<div class="why-note">Los gastos únicos y el transporte se comieron todo lo que entró en el período. No queda nada para repartir por día.</div>`);
   else rows.push(`<div class="why-note">Cada gasto único que anotes baja este número para todos los días que quedan. Esto no es un saldo: es cuánto podés gastar por día de acá al ${dm(p.end)}.</div>`);
   why.innerHTML = rows.join('');
+}
+
+function renderForm(){
+  const editando = editandoId != null;
+  document.getElementById('form').classList.toggle('editing', editando);
+  document.getElementById('formTitle').textContent = editando ? 'Editando un gasto' : '';
+  document.getElementById('add').textContent = editando ? 'Guardar cambios' : 'Anotar gasto';
+  document.getElementById('cancelEdit').hidden = !editando;
+}
+
+function renderUndo(){
+  const box = document.getElementById('undoBar');
+  box.hidden = !undo;
+  if(undo) document.getElementById('undoWhat').textContent =
+    `Borraste ${undo.item.note ? '“'+undo.item.note+'”' : 'un gasto'} de ${fmt(undo.item.amount)}.`;
 }
 
 /* El signo hace el trabajo; el color acompaña sin levantar la voz. El exceso va
@@ -858,19 +916,94 @@ document.getElementById('date').value = todayISO();
 document.getElementById('add').onclick = () => {
   const a = Math.round(Number(document.getElementById('amount').value));
   if(!a || a<=0){ document.getElementById('amount').focus(); return; }
-  const id = Date.now();
-  state.items.push({
-    id,
+  const campos = {
     date: document.getElementById('date').value || todayISO(),
     amount: a,
     cat: document.getElementById('cat').value,
     note: document.getElementById('note').value.trim()
-  });
-  markPending(id);
+  };
+  if(editandoId != null){
+    /* updatedAt del item, no del estado: la fusión entre dispositivos tiene que
+       quedarse con esta versión y no con la que ya estaba. */
+    const it = state.items.find(x => String(x.id) === String(editandoId));
+    if(it) Object.assign(it, campos, { updatedAt: Date.now() });
+    markPending(editandoId);
+    salirDeEdicion();
+  }else{
+    const id = Date.now();
+    state.items.push({ id, ...campos, updatedAt: id });
+    markPending(id);
+    document.getElementById('amount').value=''; document.getElementById('note').value='';
+  }
   save();
-  document.getElementById('amount').value=''; document.getElementById('note').value='';
-  render(); document.getElementById('amount').focus();
+  render();
+  if(editandoId == null) document.getElementById('amount').focus();
 };
+
+/* ---------- editar un gasto ----------
+   Se reusa el formulario de arriba en vez de duplicar los cuatro campos. */
+let editandoId = null;
+
+function editarItem(id){
+  const it = state.items.find(x => String(x.id) === String(id));
+  if(!it || blocked) return;
+  editandoId = it.id;
+  document.getElementById('amount').value = it.amount;
+  document.getElementById('cat').value = it.cat;
+  document.getElementById('note').value = it.note || '';
+  document.getElementById('date').value = it.date;
+  render();
+  /* scrollIntoView y no focus(): en iOS el foco programático no levanta el
+     teclado y deja el campo "activo" de mentira. Ver CLAUDE.md. */
+  document.getElementById('form').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function salirDeEdicion(){
+  editandoId = null;
+  document.getElementById('amount').value = '';
+  document.getElementById('note').value = '';
+  document.getElementById('date').value = todayISO();
+}
+
+document.getElementById('cancelEdit').onclick = () => { salirDeEdicion(); render(); };
+
+/* ---------- borrar con unos segundos de gracia ----------
+   El borrado se aplica y se guarda, pero no se sube hasta que se cierra la
+   ventana. Así deshacer no tiene que pelear con una lápida que ya viajó al
+   Gist: si el usuario se arrepiente, el borrado nunca salió del dispositivo. */
+const UNDO_MS = 8000;
+let undo = null;
+
+function borrarItem(id){
+  const it = state.items.find(x => String(x.id) === String(id));
+  if(!it) return;
+  cerrarUndo(true);                 /* si había otro esperando, se confirma */
+  state.items = state.items.filter(x => String(x.id) !== String(id));
+  state.deleted = [...(state.deleted||[]), Number(id)];
+  markPending(id);
+  save(false);
+  undo = { item: it, timer: setTimeout(()=>{ cerrarUndo(true); render(); }, UNDO_MS) };
+  render();
+}
+
+function cerrarUndo(confirmar){
+  if(!undo) return;
+  clearTimeout(undo.timer);
+  undo = null;
+  if(confirmar) save();             /* recién acá el borrado sale del aparato */
+}
+
+function deshacerBorrado(){
+  if(!undo) return;
+  const it = undo.item;
+  clearTimeout(undo.timer);
+  undo = null;
+  state.items.push(it);
+  state.deleted = (state.deleted||[]).filter(d => Number(d) !== Number(it.id));
+  save(false);
+  render();
+}
+document.getElementById('undoBtn').onclick = deshacerBorrado;
 document.getElementById('amount').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('add').click(); });
 document.getElementById('note').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('add').click(); });
 
@@ -1021,7 +1154,14 @@ function merge(remote){
   if(!remote || !Array.isArray(remote.items)) return;
   const deleted = new Set([...(state.deleted||[]), ...(remote.deleted||[])]);
   const byId = new Map();
-  [...remote.items, ...state.items].forEach(x=>{ if(!deleted.has(Number(x.id))) byId.set(String(x.id), x); });
+  /* Un gasto que existe de los dos lados se resuelve por su propio updatedAt:
+     el que se editó último gana. Local va segundo, así un empate (los dos en
+     cero, o sea nunca editados) se queda con lo de acá. */
+  [...remote.items, ...state.items].forEach(x=>{
+    if(deleted.has(Number(x.id))) return;
+    const previo = byId.get(String(x.id));
+    if(!previo || int(x.updatedAt) >= int(previo.updatedAt)) byId.set(String(x.id), x);
+  });
   /* Los cierres se unen por fecha, como los items: dos dispositivos que
      estuvieron sin conexión cerraron días distintos y los dos valen. */
   const byDate = new Map();

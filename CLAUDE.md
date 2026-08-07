@@ -106,20 +106,27 @@ nada de credenciales en el código, ni de ejemplo.
 Un Gist secreto con un único archivo, `sobres.json`, creado por la app la primera vez.
 Permiso necesario en el token: **Gists: read and write**, nada más.
 
-El estado que se persiste (schema 3):
+El estado que se persiste (schema 4):
 
 ```json
-{ "schema": 3, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
+{ "schema": 4, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
   "periods": [ { "id": 1, "start": "2026-08-05", "end": "2026-09-05", "transport": 60000,
                  "incomes": [ { "id": 1, "date": "2026-08-05", "amount": 900000, "note": "sueldo" } ] } ],
   "closed": [ { "date": "2026-08-05", "envelope": 25870 } ],
-  "deleted": [], "updatedAt": 0, "items": [] }
+  "deleted": [], "updatedAt": 0,
+  "items": [ { "id": 1, "date": "2026-08-05", "amount": 3100, "cat": "diario",
+               "note": "café", "updatedAt": 1754500000000 } ] }
 ```
+
+`updatedAt` aparece dos veces y son cosas distintas: el de arriba es del estado y decide
+la configuración; el de cada item decide ese gasto.
 
 La fusión entre dispositivos (`merge()`) sigue tres reglas, y están así a propósito:
 
 1. Los `items` se unen por `id`, así que gastos cargados en dos dispositivos sin conexión
-   entre medio conviven en vez de pisarse.
+   entre medio conviven en vez de pisarse. Cuando el mismo gasto existe de los dos lados,
+   gana el de `updatedAt` más alto: el que se editó último. Un empate — los dos en cero,
+   o sea nunca editados — se queda con el de este dispositivo.
 2. Los borrados se registran como lápidas en `deleted`. Sin eso, un gasto borrado en el
    celular revive en la próxima sincronización desde la computadora.
 3. La configuración (`daily`, `dailyMode`, `weekStart`, `periods`) sí es
@@ -132,6 +139,25 @@ medio cerraron días distintos y los dos valen.
 
 `save()` acepta `save(false)` para persistir sin marcar tiempo ni disparar un push. Se usa
 después de traer datos remotos, para no rebotar el cambio de vuelta al Gist.
+
+## Editar y borrar
+
+Tocar un gasto de la lista lo abre para editar **en el formulario de arriba**, que se
+reusa en vez de duplicar los cuatro campos. El formulario se marca en violeta, el botón
+pasa a "Guardar cambios" y aparece Cancelar: nunca hay que dudar entre anotar y editar.
+Se hace `scrollIntoView`, nunca `.focus()` — ver las trampas de iOS.
+
+Al editar se sube el **`updatedAt` del item**, no el del estado. La fusión resuelve cada
+gasto por su propio `updatedAt`: el que se editó último gana. Sin eso, editar un monto en
+el celular y sincronizar desde la computadora devolvía el valor viejo.
+
+El borrado tiene **ocho segundos de gracia**. Se aplica al estado y se persiste, pero no
+se sube hasta que la ventana se cierra: `borrarItem()` guarda con `save(false)` y recién
+`cerrarUndo(true)` llama a `save()`. Eso es lo que hace que deshacer sea posible — si el
+borrado ya hubiera viajado al Gist, la lápida volvería en la próxima fusión y mataría al
+gasto otra vez. Deshacer además saca el id de `deleted`, por lo mismo.
+
+Borrar un segundo gasto confirma el primero: hay una sola ventana abierta por vez.
 
 ## Sin conexión
 
@@ -203,8 +229,9 @@ escalón nuevo, no tocar los anteriores.
 que sí hay — el rango que cubren los gastos y lo gastado en transporte — y deja el diario
 en `manual` con el valor que ya tenía, así el número no cambia solo debajo de los pies
 del usuario. `up2to3` arranca `closed` vacío y deja que `closeDays()` complete los días
-ya pasados en el primer arranque. El criterio se mantiene: nunca completar con datos que
-el usuario no cargó.
+ya pasados en el primer arranque. `up3to4` pone el `updatedAt` de cada gasto en cero:
+inventarle una fecha de edición a un gasto viejo sería darle la última palabra en una
+fusión. El criterio se mantiene: nunca completar con datos que el usuario no cargó.
 
 **Un campo nuevo obliga a subir el schema**, aunque parezca compatible. `normalize()`
 reconstruye el objeto campo por campo, así que una versión vieja de la app que lea datos
