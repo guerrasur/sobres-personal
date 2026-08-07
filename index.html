@@ -90,6 +90,25 @@ h1{font-size:31px;font-weight:800;letter-spacing:-.02em}
 .why-div{font-size:12px;color:var(--ink-soft);padding:7px 0 0}
 .why-note{font-size:12px;color:var(--ink-soft);margin:12px 0 0;max-width:58ch}
 
+/* sobrante del período — es un registro, no un reto: el exceso no grita */
+.tally{margin-top:18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper-2)}
+.tally-head{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;color:var(--ink);
+  border:none;border-radius:var(--radius);padding:12px 14px 4px;font-family:inherit;font-size:15px;touch-action:manipulation}
+.tally-head:hover{opacity:1}
+.t-k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+.t-v{font-family:'Space Mono',monospace;font-weight:700;font-size:18px}
+.t-v.up{color:var(--teal)} .t-v.down{color:var(--ochre)} .t-v.flat{color:var(--ink-soft)}
+.tally-sub{font-size:12px;color:var(--ink-soft);padding:0 14px 12px}
+.day{display:flex;align-items:baseline;gap:10px;padding:9px 14px;border-top:1px solid var(--line);font-size:13px}
+.day .dw{width:5.4em;color:var(--ink-soft);white-space:nowrap}
+.day .dk{width:5.6em;color:var(--ink-soft);white-space:nowrap}
+.day .dn{flex:1;text-align:right;font-family:'Space Mono',monospace;font-size:11px;color:var(--ink-soft);opacity:.75;white-space:nowrap;overflow:hidden}
+.day .dv{font-family:'Space Mono',monospace;font-weight:700;white-space:nowrap}
+.day.up .dv{color:var(--teal)} .day.up .dk{color:var(--teal);opacity:.85}
+.day.down .dv{color:var(--ink-soft)} .day.down{background:rgba(184,106,18,.06)}
+.day.zero .dv{color:var(--ink-soft);opacity:.7}
+.tally-note{font-size:12px;color:var(--ink-soft);padding:10px 14px 12px;border-top:1px solid var(--line);max-width:58ch}
+
 /* signature: tira de sobres */
 .strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:26px 0 8px}
 .env{position:relative;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper-2);height:88px;overflow:hidden;cursor:pointer;transition:border-color .15s}
@@ -183,7 +202,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <header>
   <h1>Sobres</h1>
-  <div class="ver">v1.1.0</div>
+  <div class="ver">v1.2.0</div>
   <div class="sub">Un sobre por día. Cuando se vacía, se vació.</div>
   <div class="notice" id="notice" hidden></div>
 </header>
@@ -206,6 +225,16 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="strip-legend">
   <span id="weekRange"></span>
   <span id="weekLeft"></span>
+</div>
+
+<div class="tally" id="tally" hidden>
+  <button class="tally-head" id="tallyBtn" aria-expanded="false" aria-controls="tallyList">
+    <span class="t-k">Sobrante del período</span>
+    <span class="t-v num" id="tallyNet">—</span>
+    <span class="dc-caret" id="tallyCaret">▾</span>
+  </button>
+  <div class="tally-sub" id="tallySub"></div>
+  <div id="tallyList" hidden></div>
 </div>
 
 <div class="card">
@@ -317,8 +346,9 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <script>
 const KEY = 'sobres.v1';
-const SCHEMA = 2;
+const SCHEMA = 3;
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
+const plain = n => new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n||0);
 const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const DAYS = ['dom','lun','mar','mié','jue','vie','sáb'];
 const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
@@ -329,6 +359,7 @@ const int = n => Math.round(Number(n)||0);
 /* ---------- fechas ---------- */
 const dnum = iso => Date.UTC(+iso.slice(0,4), +iso.slice(5,7)-1, +iso.slice(8,10));
 const daysBetween = (a,b) => Math.round((dnum(b)-dnum(a))/86400000);
+const nextDay = iso => new Date(dnum(iso)+86400000).toISOString().slice(0,10);
 function addMonths(iso, n){
   const y=+iso.slice(0,4), m=+iso.slice(5,7), d=+iso.slice(8,10);
   const t = new Date(Date.UTC(y, m-1+n, 1));
@@ -341,13 +372,14 @@ function addMonths(iso, n){
    schema 1: { daily, weekStart, deleted, updatedAt, items }
    schema 2: agrega periods[] con ingresos y presupuesto de transporte,
              y dailyMode ('auto' | 'manual').
+   schema 3: agrega closed[], el cierre de cada día ya pasado.
    migrate() es la única puerta de entrada: localStorage, Gist y respaldos
    importados pasan por acá. Si el dato viene de un schema más nuevo que el
    que entiende esta copia de la app, no se toca: se avisa y listo. */
 
 function blankState(){
   return { schema:SCHEMA, daily:10000, dailyMode:'manual', weekStart:1,
-           periods:[], deleted:[], updatedAt:0, items:[] };
+           periods:[], closed:[], deleted:[], updatedAt:0, items:[] };
 }
 
 function migrate(raw){
@@ -357,6 +389,7 @@ function migrate(raw){
   if(from > SCHEMA) return {ok:false, reason:'too-new', schema:from};
   let d = raw;
   if(from < 2) d = up1to2(d);
+  if(from < 3) d = up2to3(d);
   return {ok:true, from, migrated:from < SCHEMA, state:normalize(d)};
 }
 
@@ -374,6 +407,13 @@ function up1to2(d){
   return { ...d, schema:2, dailyMode:'manual', periods:[
     { id:uid(), start, end, transport, incomes:[] }
   ]};
+}
+
+/* Los cierres arrancan vacíos: closeDays() cierra al abrir todo lo que haya
+   quedado abierto, así que los días ya pasados del período en curso se llenan
+   solos en el primer arranque. */
+function up2to3(d){
+  return { ...d, schema:3, closed:[] };
 }
 
 function normalize(d){
@@ -397,6 +437,11 @@ function normalize(d){
     dailyMode: d.dailyMode === 'auto' ? 'auto' : 'manual',
     weekStart: Number(d.weekStart) === 0 ? 0 : 1,
     periods,
+    closed: (Array.isArray(d.closed) ? d.closed : [])
+      .filter(c => c && c.date)
+      .map(c => ({ date:String(c.date).slice(0,10), envelope:Math.max(0, int(c.envelope)) }))
+      .filter((c,i,a) => a.findIndex(o => o.date===c.date) === i)
+      .sort((a,b2) => a.date.localeCompare(b2.date)),
     deleted: Array.isArray(d.deleted) ? d.deleted.map(Number) : [],
     updatedAt: int(d.updatedAt),
     items: d.items.filter(x => x && x.date).map(x => ({
@@ -504,6 +549,49 @@ function dailyInfo(){
   return { daily:calc.daily, ready:true, manual:false, p, calc };
 }
 
+/* ---------- cierre del día ----------
+   Al cerrar un día se guarda el sobre que regía ese día, que es lo único que
+   no se puede reconstruir después: el diario calculado se mueve con cada gasto
+   único. Lo gastado NO se congela — se lee de los items cada vez —, así anotar
+   hoy un café de ayer corrige el cierre de ayer en vez de dejarlo mintiendo.
+
+   No hay proceso a medianoche: esto corre al abrir la app y cierra todo lo que
+   haya quedado abierto. El sobrante queda anotado y nada más: no se suma al
+   día siguiente ni entra en periodCalc(). Ahorrar hoy no habilita gastar más
+   mañana. */
+function closeDays(){
+  if(blocked) return false;
+  const p = currentPeriod();
+  const info = dailyInfo();
+  if(!p || !info.ready) return false;      /* sin sobre conocido no se cierra nada */
+  const today = todayISO();
+  const done = new Set(state.closed.map(c => c.date));
+  let changed = false;
+  for(let d = p.start, n = 0; d < today && n < 400; d = nextDay(d), n++){
+    if(done.has(d)) continue;
+    state.closed.push({ date:d, envelope:info.daily });
+    changed = true;
+  }
+  if(changed) state.closed.sort((a,b)=>a.date.localeCompare(b.date));
+  return changed;
+}
+
+/* El acumulado neteado: los días que se pasaron descuentan. Un contador que
+   solo sube sería mentira. */
+function periodTally(p){
+  if(!p) return null;
+  const rows = state.closed
+    .filter(c => c.date >= p.start && c.date < p.end)
+    .map(c => ({ date:c.date, envelope:c.envelope, spent:spentOn(c.date), diff:c.envelope - spentOn(c.date) }))
+    .sort((a,b2) => b2.date.localeCompare(a.date));
+  return {
+    rows,
+    net: rows.reduce((s,r)=>s+r.diff, 0),
+    up: rows.filter(r=>r.diff > 0).length,
+    down: rows.filter(r=>r.diff < 0).length
+  };
+}
+
 function weekDays(){
   const t = new Date(todayISO()+'T00:00:00');
   const diff = (t.getDay() - state.weekStart + 7) % 7;
@@ -515,6 +603,7 @@ const spentOn = iso => state.items.filter(x=>x.date===iso && x.cat==='diario').r
 
 /* ---------- render ---------- */
 let whyOpen = false;
+let tallyOpen = false;
 let editId = null;
 
 function render(){
@@ -560,6 +649,8 @@ function render(){
     : `Semana del ${days[0].n} al ${days[6].n}`;
   document.getElementById('weekLeft').textContent = !info.ready ? `Gastaste ${fmt(wSpent)}`
     : wLeft>=0 ? `Quedan ${fmt(wLeft)}` : `Excedido ${fmt(-wLeft)}`;
+
+  renderTally(info);
 
   const mk = today.slice(0,7);
   const inMonth = state.items.filter(x=>x.date.startsWith(mk));
@@ -636,6 +727,47 @@ function renderDaily(info){
   why.innerHTML = rows.join('');
 }
 
+/* El signo hace el trabajo; el color acompaña sin levantar la voz. El exceso va
+   en gris con un fondo apenas tibio, nunca en rojo de alarma. */
+function renderTally(info){
+  const box = document.getElementById('tally');
+  const t = periodTally(info.p);
+  if(!t || !t.rows.length){ box.hidden = true; return; }
+  box.hidden = false;
+
+  const net = t.net;
+  const v = document.getElementById('tallyNet');
+  v.textContent = (net > 0 ? '+ ' : net < 0 ? '− ' : '') + fmt(Math.abs(net));
+  v.className = 't-v num ' + (net > 0 ? 'up' : net < 0 ? 'down' : 'flat');
+
+  const dias = n => n === 1 ? '1 día' : `${n} días`;
+  const partes = [];
+  if(t.up) partes.push(`sobró en ${dias(t.up)}`);
+  if(t.down) partes.push(`te pasaste en ${dias(t.down)}`);
+  document.getElementById('tallySub').textContent =
+    `Neto de ${dias(t.rows.length)} cerrados${partes.length ? ' · ' + partes.join(', ') : ''}. No se suma al día siguiente.`;
+
+  document.getElementById('tallyCaret').textContent = tallyOpen ? '▴' : '▾';
+  document.getElementById('tallyBtn').setAttribute('aria-expanded', String(tallyOpen));
+  const list = document.getElementById('tallyList');
+  list.hidden = !tallyOpen;
+  if(!tallyOpen) return;
+
+  list.innerHTML = t.rows.map(r=>{
+    const dow = DAYS[new Date(r.date+'T00:00:00').getDay()];
+    const kind = r.diff > 0 ? 'up' : r.diff < 0 ? 'down' : 'zero';
+    const label = r.diff > 0 ? 'sobró' : r.diff < 0 ? 'te pasaste' : 'justo';
+    const signo = r.diff > 0 ? '+ ' : r.diff < 0 ? '− ' : '';
+    return `<div class="day ${kind}">
+      <span class="dw">${dow} ${+r.date.slice(8,10)}/${+r.date.slice(5,7)}</span>
+      <span class="dk">${label}</span>
+      <span class="dn">${plain(r.spent)} de ${plain(r.envelope)}</span>
+      <span class="dv">${signo}${fmt(Math.abs(r.diff))}</span>
+    </div>`;
+  }).join('')
+  + `<div class="tally-note">Cada día se cierra solo cuando abrís la app: se guarda el sobre que regía ese día y se compara con lo que gastaste. Si anotás tarde un gasto viejo, el día se corrige.</div>`;
+}
+
 function renderPeriod(){
   const sel = document.getElementById('pSel');
   const cur = currentPeriod();
@@ -694,6 +826,7 @@ document.getElementById('amount').addEventListener('keydown',e=>{ if(e.key==='En
 document.getElementById('note').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('add').click(); });
 
 document.getElementById('dailyChip').onclick = () => { whyOpen = !whyOpen; renderDaily(dailyInfo()); };
+document.getElementById('tallyBtn').onclick = () => { tallyOpen = !tallyOpen; renderTally(dailyInfo()); };
 
 /* ---------- ajustes ---------- */
 document.getElementById('cfgMode').onchange = e => { state.dailyMode = e.target.value==='auto'?'auto':'manual'; save(); render(); };
@@ -760,7 +893,7 @@ document.getElementById('impFile').onchange = e => {
 };
 document.getElementById('wipe').onclick = () => {
   if(!confirm('Se borran todos los gastos anotados. ¿Seguro?')) return;
-  state = { ...state, deleted:[...(state.deleted||[]), ...state.items.map(x=>Number(x.id))], items:[] };
+  state = { ...state, deleted:[...(state.deleted||[]), ...state.items.map(x=>Number(x.id))], items:[], closed:[] };
   save(); render();
 };
 
@@ -795,9 +928,14 @@ function merge(remote){
   const deleted = new Set([...(state.deleted||[]), ...(remote.deleted||[])]);
   const byId = new Map();
   [...remote.items, ...state.items].forEach(x=>{ if(!deleted.has(Number(x.id))) byId.set(String(x.id), x); });
+  /* Los cierres se unen por fecha, como los items: dos dispositivos que
+     estuvieron sin conexión cerraron días distintos y los dos valen. */
+  const byDate = new Map();
+  [...(remote.closed||[]), ...(state.closed||[])].forEach(c=>{ if(c && c.date) byDate.set(c.date, c); });
   const remoteNewer = (remote.updatedAt||0) > (state.updatedAt||0);
   state = {
     schema: SCHEMA,
+    closed: [...byDate.values()],
     daily: remoteNewer ? (remote.daily ?? state.daily) : state.daily,
     dailyMode: remoteNewer ? (remote.dailyMode ?? state.dailyMode) : state.dailyMode,
     weekStart: remoteNewer ? (remote.weekStart ?? state.weekStart) : state.weekStart,
@@ -823,6 +961,7 @@ async function pull(){
     return;
   }
   merge(res.state);
+  closeDays();          /* lo remoto puede traer días abiertos */
   save(false); render();
 }
 
@@ -863,17 +1002,26 @@ document.getElementById('syncOff').onclick = () => {
   status('', 'Desconectado. Los gastos siguen guardados acá.');
 };
 
+const cerroAlgo = closeDays();
 render();
-/* La migración baja a disco sin tocar updatedAt ni empujar: si otro dispositivo
-   ya está en el formato nuevo, este no tiene por qué ganarle la configuración
-   sólo por haber abierto la app después. */
-if(migratedOnLoad) save(false);
+/* La migración y los cierres bajan a disco sin tocar updatedAt ni empujar: si
+   otro dispositivo ya está en el formato nuevo, este no tiene por qué ganarle
+   la configuración sólo por haber abierto la app después. Con sincronización,
+   el push del arranque los sube igual. */
+if(migratedOnLoad || cerroAlgo) save(false);
 
 if(connected()){
   status('on','Conectado');
   run(async()=>{ await pull(); await push(); }, 'Al día');
   document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState === 'visible' && !busy) run(pull,'Al día');
+    if(document.visibilityState !== 'visible') return;
+    /* volver a la app después de medianoche también cierra el día */
+    if(closeDays()){ save(false); render(); }
+    if(!busy) run(pull,'Al día');
+  });
+}else{
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible' && closeDays()){ save(false); render(); }
   });
 }
 </script>

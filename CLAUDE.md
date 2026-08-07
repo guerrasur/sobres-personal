@@ -32,6 +32,36 @@ comieron el período, es cero y el panel lo explica.
 El botón grande del diario abre el desglose (`renderDaily`) con cada término de la
 cuenta. El número tiene que poder auditarse desde la app, no de memoria.
 
+## El sobrante no se acumula
+
+Al cerrar un día se guarda la diferencia entre el sobre y lo gastado, que puede ser
+positiva o negativa. **Queda anotado y nada más.** No se suma al día siguiente: ahorrar
+hoy no habilita gastar más mañana, y por eso `periodCalc()` no mira `closed[]` ni tiene
+por qué hacerlo. Si alguna vez se propone "arrastrar el sobrante", es un cambio de idea
+del proyecto, no una mejora.
+
+`closeDays()` corre al abrir la app y al volver a ella (`visibilitychange`), y cierra
+todos los días del período que hayan quedado abiertos, incluidos los huecos del medio.
+**No hay proceso a medianoche** ni timer: la app no está corriendo cuando pasa la
+medianoche. El día de hoy nunca se cierra.
+
+De cada día se guarda sólo `{date, envelope}`. El sobre es lo único irrecuperable después
+— el diario calculado se mueve con cada gasto único —, mientras que lo gastado se lee de
+`items` en cada render. Así, anotar hoy un café de ayer corrige el cierre de ayer en vez
+de dejarlo mintiendo. No guardar el `diff` es a propósito: sería una segunda fuente de
+verdad que se desincroniza.
+
+Un cierre retroactivo usa el sobre de hoy, porque no hay registro de cuál regía ese día.
+Los días que se cierran uno por uno, con la app abriéndose a diario, son exactos.
+
+`periodTally()` devuelve el acumulado **neteado**: los días que se pasaron descuentan. Un
+contador que sólo sube sería mentira.
+
+Sobre el signo y el color: el sobrante va en `--teal` con `+`, el exceso en `--ink-soft`
+con `−` y un fondo apenas tibio. **El exceso nunca va en `--clay` ni en rojo de alarma.**
+Es un registro para encontrar el día que se fue de línea, no un reto. El acumulado en
+negativo sí usa `--ochre`, que es lo más fuerte que corresponde acá.
+
 `dailyMode` puede ser `'auto'` o `'manual'`. En manual el usuario fija el número a mano y
 el badge del chip pasa a ocre con la marca "a mano": nunca hay que dejar ambiguo de dónde
 sale el monto. Cuando no hay con qué calcular (sin período, período vencido, sin
@@ -65,12 +95,13 @@ nada de credenciales en el código, ni de ejemplo.
 Un Gist secreto con un único archivo, `sobres.json`, creado por la app la primera vez.
 Permiso necesario en el token: **Gists: read and write**, nada más.
 
-El estado que se persiste (schema 2):
+El estado que se persiste (schema 3):
 
 ```json
-{ "schema": 2, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
+{ "schema": 3, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
   "periods": [ { "id": 1, "start": "2026-08-05", "end": "2026-09-05", "transport": 60000,
                  "incomes": [ { "id": 1, "date": "2026-08-05", "amount": 900000, "note": "sueldo" } ] } ],
+  "closed": [ { "date": "2026-08-05", "envelope": 25870 } ],
   "deleted": [], "updatedAt": 0, "items": [] }
 ```
 
@@ -84,6 +115,9 @@ La fusión entre dispositivos (`merge()`) sigue tres reglas, y están así a pro
    último-en-escribir-gana, según `updatedAt`. `periods` va entero, no fusionado por id:
    un período medio mezclado entre dos dispositivos daría un diario que no es el de
    ninguno de los dos.
+
+Los `closed` se unen por `date`, como los items: dos dispositivos sin conexión entre
+medio cerraron días distintos y los dos valen.
 
 `save()` acepta `save(false)` para persistir sin marcar tiempo ni disparar un push. Se usa
 después de traer datos remotos, para no rebotar el cambio de vuelta al Gist.
@@ -99,16 +133,25 @@ del Gist y los respaldos importados. Devuelve `{ok:true, state, migrated}` o
 datos de uno actualizado; pisarlos es la forma más rápida de perderlos. La app levanta
 `blocked`, muestra el aviso del header, deshabilita todo lo que escribe y corta el push.
 
-La migración de schema 1 (`up1to2`) no inventa ingresos, porque en los datos viejos no
-hay: arma el período con lo que sí hay — el rango que cubren los gastos y lo gastado en
-transporte — y deja el diario en `manual` con el valor que ya tenía, así el número no
-cambia solo debajo de los pies del usuario. Cuando se agregue un schema 3, seguir el
-mismo criterio: migrar hacia adelante en pasos (`if(from < 3) d = up2to3(d)`) y nunca
-completar con datos que el usuario no cargó.
+Las migraciones son escalones encadenados: `if(from < 2) d = up1to2(d); if(from < 3) d =
+up2to3(d);`. Un schema 1 pasa por los dos de una y llega al formato actual. Al agregar un
+escalón nuevo, no tocar los anteriores.
+
+`up1to2` no inventa ingresos, porque en los datos viejos no hay: arma el período con lo
+que sí hay — el rango que cubren los gastos y lo gastado en transporte — y deja el diario
+en `manual` con el valor que ya tenía, así el número no cambia solo debajo de los pies
+del usuario. `up2to3` arranca `closed` vacío y deja que `closeDays()` complete los días
+ya pasados en el primer arranque. El criterio se mantiene: nunca completar con datos que
+el usuario no cargó.
+
+**Un campo nuevo obliga a subir el schema**, aunque parezca compatible. `normalize()`
+reconstruye el objeto campo por campo, así que una versión vieja de la app que lea datos
+nuevos no ignora lo que no conoce: lo borra, y después lo sube así al Gist. Subir el
+número hace que esa versión se bloquee en vez de destruir el campo.
 
 La migración baja a disco con `save(false)`. Con `save()` a secas, un dispositivo que
 abre con datos viejos marcaría `updatedAt` a ahora y le ganaría la configuración al que
-ya está al día.
+ya está al día. Los cierres de `closeDays()` se persisten igual, por lo mismo.
 
 ## Trampas de iOS ya resueltas — no reintroducir
 
@@ -158,7 +201,8 @@ Aplica a cualquier app de este usuario, no solo a esta.
 Verificar la sintaxis antes de dar por terminado un cambio (`node --check` sobre el bloque
 `<script>` extraído alcanza). No hay tests ni CI: lo que se sube al repo es lo que corre.
 
-Si se toca `migrate()` o el cálculo del diario, probarlo de verdad antes de subir. El
+Si se toca `migrate()`, el cálculo del diario o el cierre de días, probarlo de verdad
+antes de subir. El
 bloque `<script>` se puede extraer con una regex y correr en `node:vm` con un `document`
 y un `localStorage` de mentira; alcanza para migrar un export viejo real y revisar el
 estado resultante, sin agregarle una sola dependencia al repo.
