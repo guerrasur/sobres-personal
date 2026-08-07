@@ -52,12 +52,43 @@ h1{font-size:31px;font-weight:800;letter-spacing:-.02em}
 .ver{font-family:'Space Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.06em;color:var(--ink-soft);margin-top:7px}
 .sub{color:var(--ink-soft);font-size:13px;margin-top:6px}
 
+/* aviso de formato */
+.notice{
+  background:rgba(184,106,18,.14);border:1px solid var(--ochre);
+  border-radius:var(--radius);padding:13px 15px;font-size:13px;margin-top:20px;max-width:62ch;
+}
+.notice b{font-weight:700}
+
 /* hoy */
 .today{padding:30px 0 8px}
 .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
 .big{font-family:'Space Mono',monospace;font-size:52px;font-weight:700;letter-spacing:-.03em;line-height:1;margin:10px 0 4px}
-.big.ok{color:var(--teal)} .big.warn{color:var(--ochre)} .big.over{color:var(--clay)}
+.big.ok{color:var(--teal)} .big.warn{color:var(--ochre)} .big.over{color:var(--clay)} .big.idle{color:var(--ink-soft)}
 .big-note{font-size:13px;color:var(--ink-soft)}
+
+/* sobre diario: número y de dónde salió */
+.daily-chip{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin-top:16px;
+  background:var(--paper-2);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);
+  padding:11px 14px;font-family:inherit;font-size:15px;font-weight:500;
+  touch-action:manipulation;
+}
+.daily-chip:hover{opacity:1;border-color:var(--violet)}
+.daily-chip.open{border-bottom-color:transparent;border-radius:var(--radius) var(--radius) 0 0}
+.dc-k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+.dc-v{font-family:'Space Mono',monospace;font-weight:700;font-size:18px}
+.dc-mode{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:3px 7px;border-radius:2px;background:rgba(75,47,160,.12);color:var(--violet);white-space:nowrap}
+.dc-mode.manual{background:rgba(184,106,18,.16);color:var(--ochre)}
+.dc-mode.off{background:rgba(34,28,51,.08);color:var(--ink-soft)}
+.dc-caret{margin-left:auto;color:var(--ink-soft);font-size:12px}
+.why{background:var(--paper-2);border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);padding:6px 14px 14px}
+.why-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:5px 0;font-size:13px}
+.why-row .n{font-family:'Space Mono',monospace;font-weight:700;white-space:nowrap}
+.why-row.sum{border-top:1px solid var(--line);margin-top:5px;padding-top:9px}
+.why-row.res{border-top:1.5px solid var(--ink);margin-top:5px;padding-top:9px;font-size:15px;font-weight:600}
+.why-row.res .n{font-size:17px}
+.why-div{font-size:12px;color:var(--ink-soft);padding:7px 0 0}
+.why-note{font-size:12px;color:var(--ink-soft);margin:12px 0 0;max-width:58ch}
 
 /* signature: tira de sobres */
 .strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:26px 0 8px}
@@ -87,6 +118,7 @@ input[type="number"],input[type="text"],input[type="date"],input[type="password"
 }
 input.num-in{font-family:'Space Mono',monospace;font-weight:700}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--violet);outline-offset:1px}
+input:disabled,select:disabled{background:rgba(34,28,51,.05);color:var(--ink-soft)}
 .f-amount{flex:1 1 130px} .f-cat{flex:2 1 200px} .f-note{flex:2 1 180px} .f-date{flex:1 1 150px}
 button{
   font-family:'Public Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;
@@ -94,6 +126,7 @@ button{
   border-radius:var(--radius);padding:10px 18px;transition:opacity .15s;
 }
 button:hover{opacity:.86}
+button:disabled{opacity:.4;cursor:default}
 button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
 button.mini{font-size:12px;padding:5px 10px}
 
@@ -106,6 +139,7 @@ h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
 .tag.diario{background:rgba(75,47,160,.12);color:var(--violet)}
 .tag.transporte{background:rgba(15,110,99,.13);color:var(--teal)}
 .tag.unico{background:rgba(184,106,18,.14);color:var(--ochre)}
+.tag.ingreso{background:rgba(15,110,99,.13);color:var(--teal)}
 .item .desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .item .when{font-size:12px;color:var(--ink-soft);white-space:nowrap}
 .item .amt{font-family:'Space Mono',monospace;font-weight:700;white-space:nowrap}
@@ -126,9 +160,9 @@ summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-soft);lett
 .cfg{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
 .cfg > div{flex:1 1 150px}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
-.sync-box{margin-top:20px;padding:16px;background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius)}
-.sync-head{display:flex;align-items:center;justify-content:space-between}
-.sync-copy{font-size:13px;color:var(--ink-soft);margin:8px 0 14px;max-width:56ch}
+.box{margin-top:20px;padding:16px;background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius)}
+.box-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.box-copy{font-size:13px;color:var(--ink-soft);margin:8px 0 14px;max-width:56ch}
 .sync-dot{width:9px;height:9px;border-radius:50%;background:var(--ink-soft);opacity:.35}
 .sync-dot.on{background:var(--teal);opacity:1}
 .sync-dot.busy{background:var(--ochre);opacity:1}
@@ -139,6 +173,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
   .big{font-size:42px}
   .env{height:74px}
   .env .v{font-size:10px}
+  .dc-v{font-size:16px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -148,8 +183,9 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <header>
   <h1>Sobres</h1>
-  <div class="ver">v1.0.0</div>
+  <div class="ver">v1.1.0</div>
   <div class="sub">Un sobre por día. Cuando se vacía, se vació.</div>
+  <div class="notice" id="notice" hidden></div>
 </header>
 
 <div class="today">
@@ -157,6 +193,14 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
   <div class="big num" id="todayLeft">—</div>
   <div class="big-note" id="todayNote"></div>
 </div>
+
+<button class="daily-chip" id="dailyChip" aria-expanded="false" aria-controls="why">
+  <span class="dc-k">Sobre diario</span>
+  <span class="dc-v num" id="dailyVal">—</span>
+  <span class="dc-mode" id="dailyBadge">automático</span>
+  <span class="dc-caret" id="dailyCaret">▾</span>
+</button>
+<div class="why" id="why" hidden></div>
 
 <div class="strip" id="strip"></div>
 <div class="strip-legend">
@@ -197,20 +241,53 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <details>
   <summary>Ajustes y respaldo</summary>
+
+  <div class="box">
+    <div class="box-head">
+      <span class="eyebrow">Período</span>
+      <select id="pSel" style="width:auto;max-width:60%;font-size:14px;padding:6px 8px"></select>
+    </div>
+    <p class="box-copy">Un tramo entre dos cobros. La fecha de fin es el día que volvés a cobrar: arranca el período siguiente, así que no se cuenta como día de este.</p>
+    <div class="cfg">
+      <div><label for="pStart">Desde</label><input id="pStart" type="date"></div>
+      <div><label for="pEnd">Hasta</label><input id="pEnd" type="date"></div>
+      <div><label for="pTransport">Transporte presupuestado</label><input class="num-in" id="pTransport" type="number" inputmode="numeric"></div>
+    </div>
+
+    <div class="eyebrow" style="margin-top:20px">Ingresos del período</div>
+    <div id="incList"></div>
+    <div class="row" style="margin-top:12px">
+      <div class="f-amount"><label for="incAmount">Monto</label><input class="num-in" id="incAmount" type="number" inputmode="numeric" placeholder="0"></div>
+      <div class="f-note"><label for="incNote">Qué fue</label><input id="incNote" type="text" placeholder="sueldo, changa, aguinaldo"></div>
+      <div class="f-date"><label for="incDate">Fecha</label><input id="incDate" type="date"></div>
+    </div>
+    <div class="tools">
+      <button class="mini" id="incAdd">Agregar ingreso</button>
+      <button class="ghost mini" id="pNew">Nuevo período</button>
+      <button class="ghost mini" id="pDel">Borrar período</button>
+    </div>
+  </div>
+
   <div class="cfg">
-    <div><label for="cfgDaily">Sobre diario</label><input class="num-in" id="cfgDaily" type="number"></div>
+    <div><label for="cfgMode">Sobre diario</label>
+      <select id="cfgMode">
+        <option value="auto">Calculado</option><option value="manual">Fijo a mano</option>
+      </select>
+    </div>
+    <div><label for="cfgDaily">Monto fijo</label><input class="num-in" id="cfgDaily" type="number" inputmode="numeric"></div>
     <div><label for="cfgStart">Empieza la semana</label>
       <select id="cfgStart">
         <option value="1">Lunes</option><option value="0">Domingo</option>
       </select>
     </div>
   </div>
-  <div class="sync-box">
-    <div class="sync-head">
+
+  <div class="box">
+    <div class="box-head">
       <span class="eyebrow">Sincronizar entre dispositivos</span>
       <span class="sync-dot" id="syncDot" title="Sin configurar"></span>
     </div>
-    <p class="sync-copy">Guarda una copia de tus gastos en un Gist privado de GitHub, así el celular y la computadora ven lo mismo. Necesitás un token con permiso sobre Gists.</p>
+    <p class="box-copy">Guarda una copia de tus gastos en un Gist privado de GitHub, así el celular y la computadora ven lo mismo. Necesitás un token con permiso sobre Gists.</p>
     <div class="cfg">
       <div><label for="ghToken">Token de GitHub</label><input id="ghToken" type="password" placeholder="github_pat_..." autocomplete="off"></div>
       <div><label for="ghGist">ID del Gist</label><input id="ghGist" type="text" placeholder="se crea solo la primera vez"></div>
@@ -240,28 +317,191 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <script>
 const KEY = 'sobres.v1';
+const SCHEMA = 2;
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
 const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const DAYS = ['dom','lun','mar','mié','jue','vie','sáb'];
+const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const dm = iso => `${+iso.slice(8,10)}/${+iso.slice(5,7)}`;
+const uid = () => Date.now()*1000 + Math.floor(Math.random()*1000);
+const int = n => Math.round(Number(n)||0);
 
+/* ---------- fechas ---------- */
+const dnum = iso => Date.UTC(+iso.slice(0,4), +iso.slice(5,7)-1, +iso.slice(8,10));
+const daysBetween = (a,b) => Math.round((dnum(b)-dnum(a))/86400000);
+function addMonths(iso, n){
+  const y=+iso.slice(0,4), m=+iso.slice(5,7), d=+iso.slice(8,10);
+  const t = new Date(Date.UTC(y, m-1+n, 1));
+  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth()+1, 0)).getUTCDate();
+  t.setUTCDate(Math.min(d, last));
+  return t.toISOString().slice(0,10);
+}
+
+/* ---------- formato de datos y migración ----------
+   schema 1: { daily, weekStart, deleted, updatedAt, items }
+   schema 2: agrega periods[] con ingresos y presupuesto de transporte,
+             y dailyMode ('auto' | 'manual').
+   migrate() es la única puerta de entrada: localStorage, Gist y respaldos
+   importados pasan por acá. Si el dato viene de un schema más nuevo que el
+   que entiende esta copia de la app, no se toca: se avisa y listo. */
+
+function blankState(){
+  return { schema:SCHEMA, daily:10000, dailyMode:'manual', weekStart:1,
+           periods:[], deleted:[], updatedAt:0, items:[] };
+}
+
+function migrate(raw){
+  if(!raw || typeof raw !== 'object' || Array.isArray(raw)) return {ok:false, reason:'invalid'};
+  if(!Array.isArray(raw.items)) return {ok:false, reason:'invalid'};
+  const from = int(raw.schema) || 1;
+  if(from > SCHEMA) return {ok:false, reason:'too-new', schema:from};
+  let d = raw;
+  if(from < 2) d = up1to2(d);
+  return {ok:true, from, migrated:from < SCHEMA, state:normalize(d)};
+}
+
+/* Los datos viejos no tienen ingresos: no hay de dónde inventarlos. Se arma
+   el período con lo que sí hay — el rango que cubren los gastos anotados y lo
+   que se gastó en transporte — y el diario queda fijo a mano en el valor que
+   ya tenía, así el número no cambia solo debajo de los pies del usuario. */
+function up1to2(d){
+  const items = d.items.filter(x => x && x.date);
+  const start = items.map(x=>x.date).sort()[0] || todayISO();
+  const end = addMonths(start, 1);
+  const transport = items
+    .filter(x => x.cat==='transporte' && x.date>=start && x.date<end)
+    .reduce((s,x)=>s+int(x.amount), 0);
+  return { ...d, schema:2, dailyMode:'manual', periods:[
+    { id:uid(), start, end, transport, incomes:[] }
+  ]};
+}
+
+function normalize(d){
+  const b = blankState();
+  const periods = (Array.isArray(d.periods) ? d.periods : [])
+    .filter(p => p && p.start && p.end)
+    .map(p => ({
+      id: p.id ?? uid(),
+      start: String(p.start).slice(0,10),
+      end: String(p.end).slice(0,10),
+      transport: Math.max(0, int(p.transport)),
+      incomes: (Array.isArray(p.incomes) ? p.incomes : [])
+        .filter(i => i && i.amount != null)
+        .map(i => ({ id:i.id ?? uid(), date:String(i.date||p.start).slice(0,10),
+                     amount:int(i.amount), note:String(i.note||'') }))
+    }))
+    .sort((a,b2) => a.start.localeCompare(b2.start));
+  return {
+    schema: SCHEMA,
+    daily: Math.max(0, int(d.daily ?? b.daily)),
+    dailyMode: d.dailyMode === 'auto' ? 'auto' : 'manual',
+    weekStart: Number(d.weekStart) === 0 ? 0 : 1,
+    periods,
+    deleted: Array.isArray(d.deleted) ? d.deleted.map(Number) : [],
+    updatedAt: int(d.updatedAt),
+    items: d.items.filter(x => x && x.date).map(x => ({
+      id: x.id ?? uid(), date:String(x.date).slice(0,10), amount:int(x.amount),
+      cat: ['diario','transporte','unico'].includes(x.cat) ? x.cat : 'diario',
+      note: String(x.note||'')
+    }))
+  };
+}
+
+/* ---------- estado ---------- */
+let blocked = false;      /* datos de una versión más nueva: no escribir nada */
+let migratedOnLoad = false;
 let state = load();
 
 function load(){
-  try{
-    const raw = localStorage.getItem(KEY);
-    if(raw) return JSON.parse(raw);
-  }catch(e){}
-  return { daily:10000, weekStart:1, deleted:[], updatedAt:0, items:[
-    {id:1, date:todayISO(), amount:3100,  cat:'diario',     note:'donas para la merienda'},
-    {id:2, date:todayISO(), amount:5000,  cat:'transporte', note:'subte'},
-    {id:3, date:todayISO(), amount:38000, cat:'unico',      note:'funda y vidrio del celular'}
-  ]};
+  let raw = null;
+  try{ raw = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  if(raw === null || raw === undefined) return seed();
+  const r = migrate(raw);
+  if(r.ok){
+    migratedOnLoad = r.migrated;
+    return r.state;
+  }
+  if(r.reason === 'too-new'){
+    block(r.schema, 'local');
+    return normalize({ ...blankState(), ...raw, items: Array.isArray(raw.items)?raw.items:[] });
+  }
+  return seed();
 }
+
+function seed(){
+  const start = todayISO();
+  const s = blankState();
+  s.dailyMode = 'auto';
+  s.periods = [{ id:uid(), start, end:addMonths(start,1), transport:60000,
+                 incomes:[{ id:uid(), date:start, amount:900000, note:'sueldo' }] }];
+  s.items = [
+    {id:1, date:start, amount:3100,  cat:'diario',     note:'donas para la merienda'},
+    {id:2, date:start, amount:5000,  cat:'transporte', note:'subte'},
+    {id:3, date:start, amount:38000, cat:'unico',      note:'funda y vidrio del celular'}
+  ];
+  return s;
+}
+
+function block(schema, where){
+  blocked = true;
+  const n = document.getElementById('notice');
+  n.hidden = false;
+  n.innerHTML = `<b>Hay datos de una versión más nueva.</b> Están guardados en formato ${esc(schema)} y esta copia de la app entiende hasta el ${SCHEMA}. `
+    + (where==='gist'
+        ? 'No se tocó nada y se pausó la sincronización para no pisarlos. Actualizá Sobres en este dispositivo (recargá con la app cerrada) y volvé a entrar.'
+        : 'No se tocó nada. Actualizá Sobres en este dispositivo (recargá con la app cerrada) y volvé a entrar.');
+  document.querySelectorAll('#add,#incAdd,#pNew,#pDel,#wipe,#impBtn,#syncNow,#cfgMode,#cfgDaily,#cfgStart,#pStart,#pEnd,#pTransport,#pSel')
+    .forEach(el => el.disabled = true);
+}
+
 function save(touch){
+  if(blocked) return;
   if(touch !== false) state.updatedAt = Date.now();
   if(!Array.isArray(state.deleted)) state.deleted = [];
+  state.schema = SCHEMA;
   try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
   if(touch !== false) schedulePush();
+}
+
+/* ---------- períodos y cálculo del sobre diario ---------- */
+function currentPeriod(){
+  const t = todayISO();
+  const ps = state.periods;
+  if(!ps.length) return null;
+  return ps.find(p => t >= p.start && t < p.end)
+      || [...ps].reverse().find(p => t >= p.start)
+      || ps[0];
+}
+
+/* (ingresos − transporte presupuestado − únicos ya hechos) ÷ días que faltan */
+function periodCalc(p){
+  if(!p) return null;
+  const t = todayISO();
+  const income = p.incomes.reduce((s,i)=>s+i.amount, 0);
+  const transport = p.transport;
+  const unico = state.items
+    .filter(x => x.cat==='unico' && x.date>=p.start && x.date<p.end)
+    .reduce((s,x)=>s+x.amount, 0);
+  const pool = income - transport - unico;
+  const from = t < p.start ? p.start : t;          /* período futuro: cuenta entero */
+  const days = daysBetween(from, p.end);           /* hoy cuenta, el día de fin no */
+  const total = daysBetween(p.start, p.end);
+  return { income, transport, unico, pool, days, total, from, last: addMonths(p.end,0),
+           finished: days <= 0, daily: days > 0 ? Math.max(0, Math.floor(pool/days)) : 0 };
+}
+
+/* Lo que consume el resto de la app. `ready:false` = no hay con qué calcular,
+   y entonces no se muestra un número inventado. */
+function dailyInfo(){
+  const p = currentPeriod();
+  const calc = periodCalc(p);
+  if(blocked) return { daily:0, ready:false, manual:false, p:null, calc:null,
+    why:'Los datos son de una versión más nueva y no se están leyendo. Actualizá la app en este dispositivo.' };
+  if(state.dailyMode === 'manual') return { daily:state.daily, ready:true, manual:true, p, calc };
+  if(!p) return { daily:0, ready:false, manual:false, p, calc, why:'Todavía no definiste un período. Andá a Ajustes y cargá desde cuándo hasta cuándo tenés que llegar.' };
+  if(calc.finished) return { daily:0, ready:false, manual:false, p, calc, why:`El período terminó el ${dm(p.end)}. Creá el siguiente en Ajustes para que vuelva a calcularse.` };
+  if(!p.incomes.length) return { daily:0, ready:false, manual:false, p, calc, why:'Cargá los ingresos del período en Ajustes para que el diario se calcule.' };
+  return { daily:calc.daily, ready:true, manual:false, p, calc };
 }
 
 function weekDays(){
@@ -273,21 +513,37 @@ function weekDays(){
 }
 const spentOn = iso => state.items.filter(x=>x.date===iso && x.cat==='diario').reduce((s,x)=>s+x.amount,0);
 
+/* ---------- render ---------- */
+let whyOpen = false;
+let editId = null;
+
 function render(){
   const today = todayISO();
-  const spent = spentOn(today), left = state.daily - spent;
+  const info = dailyInfo();
+  const daily = info.daily;
+  const spent = spentOn(today), left = daily - spent;
+
   const el = document.getElementById('todayLeft');
-  el.textContent = fmt(left);
-  el.className = 'big num ' + (left < 0 ? 'over' : left < state.daily*0.25 ? 'warn' : 'ok');
-  document.getElementById('todayNote').textContent =
-    left < 0 ? `Te pasaste ${fmt(-left)} del sobre de hoy.`
-             : `Gastaste ${fmt(spent)} de ${fmt(state.daily)}.`;
+  if(!info.ready && !spent){
+    el.textContent = '—';
+    el.className = 'big num idle';
+    document.getElementById('todayNote').textContent = info.why || '';
+  }else{
+    el.textContent = fmt(left);
+    el.className = 'big num ' + (left < 0 ? 'over' : left < daily*0.25 ? 'warn' : 'ok');
+    document.getElementById('todayNote').textContent =
+      !info.ready ? info.why
+      : left < 0 ? `Te pasaste ${fmt(-left)} del sobre de hoy.`
+      : `Gastaste ${fmt(spent)} de ${fmt(daily)}.`;
+  }
+
+  renderDaily(info);
 
   const days = weekDays();
   document.getElementById('strip').innerHTML = days.map(d=>{
-    const s = spentOn(d.iso), pct = Math.min(100, state.daily ? s/state.daily*100 : 0);
+    const s = spentOn(d.iso), pct = Math.min(100, daily ? s/daily*100 : 0);
     const future = d.iso > today;
-    return `<div class="env ${d.iso===today?'today-env':''} ${s>state.daily?'overflow':''}" data-date="${d.iso}" title="${d.iso}">
+    return `<div class="env ${d.iso===today?'today-env':''} ${daily&&s>daily?'overflow':''}" data-date="${d.iso}" title="${d.iso}">
       <span class="fill" style="height:${pct}%"></span>
       <span class="d">${d.dow} ${d.n}</span>
       <span class="v" style="opacity:${future&&!s?0.3:1}">${s?fmt(s).replace('$','').trim():'–'}</span>
@@ -298,9 +554,12 @@ function render(){
   });
 
   const wSpent = days.reduce((s,d)=>s+spentOn(d.iso),0);
-  const wLeft = state.daily*7 - wSpent;
-  document.getElementById('weekRange').textContent = `Semana del ${days[0].n} al ${days[6].n} · sobre semanal ${fmt(state.daily*7)}`;
-  document.getElementById('weekLeft').textContent = wLeft>=0 ? `Quedan ${fmt(wLeft)}` : `Excedido ${fmt(-wLeft)}`;
+  const wLeft = daily*7 - wSpent;
+  document.getElementById('weekRange').textContent = info.ready
+    ? `Semana del ${days[0].n} al ${days[6].n} · sobre semanal ${fmt(daily*7)}`
+    : `Semana del ${days[0].n} al ${days[6].n}`;
+  document.getElementById('weekLeft').textContent = !info.ready ? `Gastaste ${fmt(wSpent)}`
+    : wLeft>=0 ? `Quedan ${fmt(wLeft)}` : `Excedido ${fmt(-wLeft)}`;
 
   const mk = today.slice(0,7);
   const inMonth = state.items.filter(x=>x.date.startsWith(mk));
@@ -318,21 +577,104 @@ function render(){
   document.getElementById('list').innerHTML = items.length ? items.map(x=>`
     <div class="item">
       <span class="tag ${x.cat}">${labels[x.cat]}</span>
-      <span class="desc">${(x.note||'—').replace(/</g,'&lt;')}</span>
+      <span class="desc">${esc(x.note||'—')}</span>
       <span class="when">${x.date.slice(8)}/${x.date.slice(5,7)}</span>
       <span class="amt">${fmt(x.amount)}</span>
-      <button class="del" data-id="${x.id}" aria-label="Borrar">×</button>
+      ${blocked?'':`<button class="del" data-id="${x.id}" aria-label="Borrar">×</button>`}
     </div>`).join('')
     : `<div class="empty">Todavía no anotaste nada. Empezá por el primer café.</div>`;
-  document.querySelectorAll('.del').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.del[data-id]').forEach(b=>b.onclick=()=>{
     state.deleted = [...(state.deleted||[]), Number(b.dataset.id)];
     state.items = state.items.filter(x=>x.id!=b.dataset.id); save(); render();
   });
 
+  document.getElementById('cfgMode').value = state.dailyMode;
   document.getElementById('cfgDaily').value = state.daily;
+  document.getElementById('cfgDaily').disabled = blocked || state.dailyMode !== 'manual';
   document.getElementById('cfgStart').value = state.weekStart;
+  renderPeriod();
 }
 
+function renderDaily(info){
+  const badge = document.getElementById('dailyBadge');
+  document.getElementById('dailyVal').textContent = info.ready ? fmt(info.daily) : '—';
+  badge.textContent = info.manual ? 'a mano' : info.ready ? 'automático' : 'sin calcular';
+  badge.className = 'dc-mode' + (info.manual ? ' manual' : info.ready ? '' : ' off');
+  document.getElementById('dailyCaret').textContent = whyOpen ? '▴' : '▾';
+  document.getElementById('dailyChip').classList.toggle('open', whyOpen);
+  document.getElementById('dailyChip').setAttribute('aria-expanded', String(whyOpen));
+
+  const why = document.getElementById('why');
+  why.hidden = !whyOpen;
+  if(!whyOpen) return;
+
+  const c = info.calc, p = info.p;
+  const rows = [];
+  if(info.manual){
+    rows.push(`<div class="why-row res"><span>Fijado a mano</span><span class="n">${fmt(state.daily)}</span></div>`);
+    if(c && !c.finished && p.incomes.length){
+      rows.push(`<div class="why-note">El cálculo del período daría ${fmt(c.daily)} por día. Poné el sobre diario en “Calculado” en Ajustes para usar ese número.</div>`);
+    }else{
+      rows.push(`<div class="why-note">No se está calculando: el monto sale de lo que escribiste en Ajustes. Cargá ahí los ingresos del período y pasá el sobre diario a “Calculado” para que salga solo.</div>`);
+    }
+    why.innerHTML = rows.join('');
+    return;
+  }
+  if(!c){
+    why.innerHTML = `<div class="why-note">${esc(info.why||'')}</div>`;
+    return;
+  }
+  rows.push(`<div class="why-row"><span>Ingresos del período (${p.incomes.length})</span><span class="n">+ ${fmt(c.income)}</span></div>`);
+  rows.push(`<div class="why-row"><span>Transporte presupuestado</span><span class="n">− ${fmt(c.transport)}</span></div>`);
+  rows.push(`<div class="why-row"><span>Gastos únicos ya hechos</span><span class="n">− ${fmt(c.unico)}</span></div>`);
+  rows.push(`<div class="why-row sum"><span>A repartir</span><span class="n">${fmt(c.pool)}</span></div>`);
+  rows.push(`<div class="why-div">÷ ${c.days} ${c.days===1?'día que falta':'días que faltan'} · de hoy ${dm(c.from)} hasta el ${dm(p.end)} sin contarlo · el período va del ${dm(p.start)} al ${dm(p.end)} (${c.total} días)</div>`);
+  rows.push(`<div class="why-row res"><span>Por día</span><span class="n">${info.ready?fmt(info.daily):'—'}</span></div>`);
+  if(!info.ready) rows.push(`<div class="why-note">${esc(info.why||'')}</div>`);
+  else if(c.pool <= 0) rows.push(`<div class="why-note">Los gastos únicos y el transporte se comieron todo lo que entró en el período. No queda nada para repartir por día.</div>`);
+  else rows.push(`<div class="why-note">Cada gasto único que anotes baja este número para todos los días que quedan. Esto no es un saldo: es cuánto podés gastar por día de acá al ${dm(p.end)}.</div>`);
+  why.innerHTML = rows.join('');
+}
+
+function renderPeriod(){
+  const sel = document.getElementById('pSel');
+  const cur = currentPeriod();
+  if(!state.periods.length){
+    sel.innerHTML = '<option>sin períodos</option>';
+    ['pStart','pEnd','pTransport'].forEach(id=>{ const e=document.getElementById(id); e.value=''; e.disabled=true; });
+    document.getElementById('incList').innerHTML = `<div class="empty">Creá un período con “Nuevo período”.</div>`;
+    document.getElementById('incAdd').disabled = true;
+    document.getElementById('pDel').disabled = true;
+    return;
+  }
+  if(!state.periods.some(p=>p.id===editId)) editId = cur ? cur.id : state.periods[0].id;
+  const p = state.periods.find(x=>x.id===editId);
+
+  sel.innerHTML = state.periods.map(x=>
+    `<option value="${x.id}">${dm(x.start)} → ${dm(x.end)}${cur&&x.id===cur.id?' · en curso':''}</option>`).join('');
+  sel.value = String(editId);
+  ['pStart','pEnd','pTransport','incAdd','pDel'].forEach(id=>document.getElementById(id).disabled = blocked);
+  document.getElementById('pStart').value = p.start;
+  document.getElementById('pEnd').value = p.end;
+  document.getElementById('pTransport').value = p.transport;
+  document.getElementById('incDate').value = document.getElementById('incDate').value || p.start;
+
+  document.getElementById('incList').innerHTML = p.incomes.length
+    ? [...p.incomes].sort((a,b)=>a.date.localeCompare(b.date)).map(i=>`
+      <div class="item">
+        <span class="tag ingreso">ingreso</span>
+        <span class="desc">${esc(i.note||'—')}</span>
+        <span class="when">${dm(i.date)}</span>
+        <span class="amt">${fmt(i.amount)}</span>
+        ${blocked?'':`<button class="del del-inc" data-inc="${i.id}" aria-label="Borrar">×</button>`}
+      </div>`).join('')
+    : `<div class="empty">Sin ingresos cargados. Sin esto no se puede calcular el diario.</div>`;
+  document.querySelectorAll('.del-inc').forEach(b=>b.onclick=()=>{
+    p.incomes = p.incomes.filter(i=>String(i.id)!==b.dataset.inc); save(); render();
+  });
+}
+
+/* ---------- gastos ---------- */
 document.getElementById('date').value = todayISO();
 document.getElementById('add').onclick = () => {
   const a = Math.round(Number(document.getElementById('amount').value));
@@ -344,16 +686,54 @@ document.getElementById('add').onclick = () => {
     cat: document.getElementById('cat').value,
     note: document.getElementById('note').value.trim()
   });
-  save(); 
+  save();
   document.getElementById('amount').value=''; document.getElementById('note').value='';
   render(); document.getElementById('amount').focus();
 };
 document.getElementById('amount').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('add').click(); });
 document.getElementById('note').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('add').click(); });
 
-document.getElementById('cfgDaily').onchange = e => { state.daily = Math.max(0,Math.round(Number(e.target.value)||0)); save(); render(); };
+document.getElementById('dailyChip').onclick = () => { whyOpen = !whyOpen; renderDaily(dailyInfo()); };
+
+/* ---------- ajustes ---------- */
+document.getElementById('cfgMode').onchange = e => { state.dailyMode = e.target.value==='auto'?'auto':'manual'; save(); render(); };
+document.getElementById('cfgDaily').onchange = e => { state.daily = Math.max(0,int(e.target.value)); save(); render(); };
 document.getElementById('cfgStart').onchange = e => { state.weekStart = Number(e.target.value); save(); render(); };
 
+const withPeriod = fn => { const p = state.periods.find(x=>x.id===editId); if(p){ fn(p); save(); render(); } };
+document.getElementById('pSel').onchange = e => { editId = state.periods.find(p=>String(p.id)===e.target.value)?.id ?? editId; render(); };
+document.getElementById('pStart').onchange = e => withPeriod(p=>{ if(e.target.value) p.start = e.target.value; });
+document.getElementById('pEnd').onchange   = e => withPeriod(p=>{ if(e.target.value) p.end = e.target.value; });
+document.getElementById('pTransport').onchange = e => withPeriod(p=>{ p.transport = Math.max(0,int(e.target.value)); });
+document.getElementById('incAdd').onclick = () => {
+  const amount = int(document.getElementById('incAmount').value);
+  if(!amount || amount<=0){ document.getElementById('incAmount').focus(); return; }
+  withPeriod(p=>{
+    p.incomes.push({ id:uid(), date:document.getElementById('incDate').value || p.start,
+                     amount, note:document.getElementById('incNote').value.trim() });
+    document.getElementById('incAmount').value=''; document.getElementById('incNote').value='';
+  });
+};
+document.getElementById('incAmount').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('incAdd').click(); });
+document.getElementById('incNote').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('incAdd').click(); });
+document.getElementById('pNew').onclick = () => {
+  const last = state.periods[state.periods.length-1];
+  const start = last ? last.end : todayISO();
+  const p = { id:uid(), start, end:addMonths(start,1), transport:last?last.transport:0, incomes:[] };
+  state.periods.push(p);
+  state.periods.sort((a,b)=>a.start.localeCompare(b.start));
+  editId = p.id;
+  document.getElementById('incDate').value = start;
+  save(); render();
+};
+document.getElementById('pDel').onclick = () => {
+  const p = state.periods.find(x=>x.id===editId); if(!p) return;
+  if(!confirm(`Se borra el período ${dm(p.start)} → ${dm(p.end)} y sus ingresos. Los gastos anotados quedan. ¿Seguro?`)) return;
+  state.periods = state.periods.filter(x=>x.id!==editId);
+  editId = null; save(); render();
+};
+
+/* ---------- respaldo ---------- */
 function download(name, content, type){
   const url = URL.createObjectURL(new Blob([content],{type}));
   const a = document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
@@ -362,18 +742,26 @@ document.getElementById('expCsv').onclick = () => {
   const rows = [['fecha','categoria','monto','detalle'],
     ...[...state.items].sort((a,b)=>a.date.localeCompare(b.date))
       .map(x=>[x.date,x.cat,x.amount,(x.note||'').replace(/"/g,'""')])];
-  download('gastos.csv', '\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n'), 'text/csv');
+  download('gastos.csv', '\\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n'), 'text/csv');
 };
 document.getElementById('expJson').onclick = () => download('sobres-respaldo.json', JSON.stringify(state), 'application/json');
 document.getElementById('impBtn').onclick = () => document.getElementById('impFile').click();
 document.getElementById('impFile').onchange = e => {
   const f = e.target.files[0]; if(!f) return;
   const r = new FileReader();
-  r.onload = () => { try{ const d=JSON.parse(r.result); if(d && Array.isArray(d.items)){ state=d; save(); render(); } }catch(err){ alert('El archivo no se pudo leer.'); } };
+  r.onload = () => {
+    let res;
+    try{ res = migrate(JSON.parse(r.result)); }catch(err){ alert('El archivo no se pudo leer.'); return; }
+    if(res.ok){ state = res.state; editId = null; save(); render(); }
+    else if(res.reason === 'too-new') alert(`El respaldo es de una versión más nueva de Sobres (formato ${res.schema}, esta app entiende hasta ${SCHEMA}). No se cargó nada. Actualizá la app.`);
+    else alert('El archivo no tiene el formato de un respaldo de Sobres.');
+  };
   r.readAsText(f);
 };
 document.getElementById('wipe').onclick = () => {
-  if(confirm('Se borran todos los gastos anotados. ¿Seguro?')){ state={daily:state.daily,weekStart:state.weekStart,items:[]}; save(); render(); }
+  if(!confirm('Se borran todos los gastos anotados. ¿Seguro?')) return;
+  state = { ...state, deleted:[...(state.deleted||[]), ...state.items.map(x=>Number(x.id))], items:[] };
+  save(); render();
 };
 
 /* ---------- sincronización con un Gist privado ---------- */
@@ -401,6 +789,7 @@ async function gh(path, opts={}){
   return r.json();
 }
 
+/* items por id con lápidas; el resto (config y períodos) es último-en-escribir-gana */
 function merge(remote){
   if(!remote || !Array.isArray(remote.items)) return;
   const deleted = new Set([...(state.deleted||[]), ...(remote.deleted||[])]);
@@ -408,26 +797,37 @@ function merge(remote){
   [...remote.items, ...state.items].forEach(x=>{ if(!deleted.has(Number(x.id))) byId.set(String(x.id), x); });
   const remoteNewer = (remote.updatedAt||0) > (state.updatedAt||0);
   state = {
+    schema: SCHEMA,
     daily: remoteNewer ? (remote.daily ?? state.daily) : state.daily,
+    dailyMode: remoteNewer ? (remote.dailyMode ?? state.dailyMode) : state.dailyMode,
     weekStart: remoteNewer ? (remote.weekStart ?? state.weekStart) : state.weekStart,
+    periods: remoteNewer ? (remote.periods ?? state.periods) : state.periods,
     deleted: [...deleted],
     updatedAt: Math.max(state.updatedAt||0, remote.updatedAt||0),
     items: [...byId.values()]
   };
+  state = normalize(state);
 }
 
 async function pull(){
-  if(!connected() || !sync.gist) return;
+  if(blocked || !connected() || !sync.gist) return;
   const g = await gh('/gists/'+sync.gist);
   const f = g.files && g.files[FILE];
   if(!f) return;
   const raw = f.truncated ? await (await fetch(f.raw_url)).text() : f.content;
-  merge(JSON.parse(raw));
+  const res = migrate(JSON.parse(raw));
+  if(!res.ok){
+    /* Un dispositivo con la app vieja no puede entender lo que subió uno nuevo.
+       Pisar el Gist acá es la forma más rápida de perder los datos: mejor frenar. */
+    if(res.reason === 'too-new'){ block(res.schema, 'gist'); render(); throw new Error('Datos de una versión más nueva. No se tocó nada.'); }
+    return;
+  }
+  merge(res.state);
   save(false); render();
 }
 
 async function push(){
-  if(!connected()) return;
+  if(blocked || !connected()) return;
   const body = { files:{ [FILE]:{ content: JSON.stringify(state, null, 1) } } };
   if(sync.gist){
     await gh('/gists/'+sync.gist, { method:'PATCH', body: JSON.stringify(body) });
@@ -439,7 +839,7 @@ async function push(){
 }
 
 function schedulePush(){
-  if(!connected()) return;
+  if(blocked || !connected()) return;
   clearTimeout(pushTimer);
   pushTimer = setTimeout(()=>run(push, 'Guardado en GitHub'), 1200);
 }
@@ -464,6 +864,11 @@ document.getElementById('syncOff').onclick = () => {
 };
 
 render();
+/* La migración baja a disco sin tocar updatedAt ni empujar: si otro dispositivo
+   ya está en el formato nuevo, este no tiene por qué ganarle la configuración
+   sólo por haber abierto la app después. */
+if(migratedOnLoad) save(false);
+
 if(connected()){
   status('on','Conectado');
   run(async()=>{ await pull(); await push(); }, 'Al día');
