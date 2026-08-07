@@ -61,6 +61,9 @@ h1{font-size:31px;font-weight:800;letter-spacing:-.02em}
   background:rgba(75,47,160,.11);color:var(--violet);border:1px solid rgba(75,47,160,.28);
 }
 .netbar.err{background:rgba(158,47,39,.10);color:var(--clay);border-color:rgba(158,47,39,.3)}
+/* display: explícito le gana a [hidden] del navegador, y el cartel no se
+   podría esconder nunca. */
+.netbar[hidden],.update[hidden]{display:none}
 
 /* versión nueva esperando */
 .update{

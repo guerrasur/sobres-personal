@@ -24,9 +24,18 @@ self.addEventListener('install', e => {
   /* Sin skipWaiting: el que decide cuándo se actualiza es el usuario, con el
      aviso de la app. Recargar de golpe abajo de alguien que está anotando un
      gasto es peor que esperar. */
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).catch(()=>{})
-  );
+  e.waitUntil((async () => {
+    const c = await caches.open(CACHE);
+    /* cache:'reload' — sin esto el worker nuevo se llena desde el caché HTTP
+       del navegador y puede guardar el index.html viejo: la actualización se
+       instalaría sin traer nada nuevo. */
+    await Promise.all(ASSETS.map(async u => {
+      try{
+        const r = await fetch(u, { cache:'reload' });
+        if(r && r.ok) await c.put(u, r);
+      }catch(err){}
+    }));
+  })());
 });
 
 self.addEventListener('activate', e => {
