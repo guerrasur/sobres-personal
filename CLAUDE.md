@@ -29,8 +29,34 @@ La fecha de fin es el día del próximo cobro: arranca el período siguiente y *
 como día de este. Hoy sí cuenta. El diario nunca se muestra negativo; si los únicos se
 comieron el período, es cero y el panel lo explica.
 
-El botón grande del diario abre el desglose (`renderDaily`) con cada término de la
-cuenta. El número tiene que poder auditarse desde la app, no de memoria.
+Tocar el número grande abre la cuenta (`renderWhy`) con cada término, hasta lo que queda
+hoy. El número tiene que poder auditarse desde la app, no de memoria. Es el **único**
+lugar donde se explica de dónde sale: nunca fijo en pantalla.
+
+## La pantalla principal son tres cosas
+
+La app se abre para anotar un gasto y cerrarla. La vista `Hoy` tiene tres cosas y nada
+más, en este orden:
+
+1. **Cuánto queda hoy**, el número grande, sin nada al lado. Debajo va una barra fina con
+   la proporción del día: dice lo mismo que "gastaste X de Y" sin repetir una cifra.
+2. **El formulario**, visible sin scrollear apenas se abre la app.
+3. **Lo anotado hoy**, la lista.
+
+Todo lo demás —la semana, los días cerrados, el mes, el historial completo y los
+ajustes— vive en la vista `Resumen`, a un toque de distancia (`setView`). Volver a meter
+tarjetas explicativas arriba del formulario es deshacer el rediseño.
+
+Anotar un gasto típico son **dos toques y nada de scroll**: tocar el monto, escribirlo,
+tocar Anotar. Por eso el monto va primero, la categoría son tres botones a la vista
+(vuelve sola a "Del día" después de anotar), la nota es opcional y va última, y la fecha
+es hoy y **no se muestra** — aparece sólo si se toca "otro día". Cualquier campo nuevo
+en ese formulario cuesta un toque: va escondido o no va.
+
+Ningún número lleva un párrafo al lado. Si hace falta aclarar algo, es una línea corta y
+sólo dentro de la cuenta que se abre al tocar el número. La app tampoco manda a
+configurar nada: el sobre fijado a mano es una opción válida y le alcanza con una
+etiqueta chica.
 
 ## El sobrante no se acumula
 
@@ -62,20 +88,33 @@ con `−` y un fondo apenas tibio. **El exceso nunca va en `--clay` ni en rojo d
 Es un registro para encontrar el día que se fue de línea, no un reto. El acumulado en
 negativo sí usa `--ochre`, que es lo más fuerte que corresponde acá.
 
-`dailyMode` puede ser `'auto'` o `'manual'`. En manual el usuario fija el número a mano y
-el badge del chip pasa a ocre con la marca "a mano": nunca hay que dejar ambiguo de dónde
-sale el monto. Cuando no hay con qué calcular (sin período, período vencido, sin
-ingresos) el diario **no** se inventa: se muestra "—" y se dice qué falta.
+La lista vive en `Resumen`, siempre desplegada y sin resumen escrito arriba: cada fila
+dice el día, si sobró o se pasó, la diferencia y —en una segunda línea, entera, sin
+cortarse contra el ancho— cuánto se gastó de cuánto. Con eso alcanza; el párrafo que
+explicaba el mecanismo se fue.
 
-Las tres categorías no son decorativas, cada una sale de un bolsillo distinto:
+`dailyMode` puede ser `'auto'` o `'manual'`. En manual aparece la etiqueta ocre "a mano"
+al lado de "Queda hoy": nunca hay que dejar ambiguo de dónde sale el monto, pero tampoco
+hay que tratarlo como un estado a medio configurar. Cuando no hay con qué calcular (sin
+período, período vencido, sin ingresos) el diario **no** se inventa: se muestra "—" y una
+línea corta de qué falta, de una oración, nunca instrucciones.
 
-- `diario` — sale del sobre del día (café, kiosco, almuerzo). Consume el sobre de hoy y
-  no toca el cálculo del período.
-- `transporte` — presupuesto aparte, definido por período (`period.transport`). Lo que se
-  descuenta del cálculo es el **presupuesto**, no lo gastado: anotar un viaje no mueve el
-  diario.
-- `unico` — compras puntuales que no deben romper el día (un cargador, un repuesto). No
-  salen del sobre de hoy, pero sí bajan el diario de todos los días que quedan.
+Las tres categorías no son decorativas, cada una sale de un bolsillo distinto. Adentro
+del código se llaman como siempre; en pantalla van con el nombre de la derecha, que se
+entiende sin saber cómo está hecha la app:
+
+- `diario` → **"Del día"**. Sale del sobre del día (café, kiosco, almuerzo). Consume el
+  sobre de hoy y no toca el cálculo del período.
+- `transporte` → **"Transporte"**. Presupuesto aparte, definido por período
+  (`period.transport`). Lo que se descuenta del cálculo es el **presupuesto**, no lo
+  gastado: anotar un viaje no mueve el diario.
+- `unico` → **"Aparte"**. Compras puntuales que no deben romper el día (un cargador, un
+  repuesto). No salen del sobre de hoy, pero sí bajan el diario de todos los días que
+  quedan.
+
+El mismo criterio vale para el resto de los rótulos: "sobrante del período", "sobres
+diarios", "sale de", "únicos" son términos internos. En Ajustes, el período se llama
+**tramo** ("de un cobro al otro") y los ingresos, **lo que cobrás en este tramo**.
 
 ## Restricciones que no se negocian
 
@@ -142,10 +181,12 @@ después de traer datos remotos, para no rebotar el cambio de vuelta al Gist.
 
 ## Editar y borrar
 
-Tocar un gasto de la lista lo abre para editar **en el formulario de arriba**, que se
-reusa en vez de duplicar los cuatro campos. El formulario se marca en violeta, el botón
-pasa a "Guardar cambios" y aparece Cancelar: nunca hay que dudar entre anotar y editar.
-Se hace `scrollIntoView`, nunca `.focus()` — ver las trampas de iOS.
+Tocar un gasto de cualquiera de las dos listas lo abre para editar **en el formulario de
+Hoy**, que se reusa en vez de duplicar los campos. Si se tocó desde el historial, la app
+cambia sola a `Hoy`, que es donde está el formulario. Se marca en violeta, el botón pasa
+a "Guardar cambios" y aparece Cancelar: nunca hay que dudar entre anotar y editar. Si el
+gasto es de otro día, la fecha se muestra sola. Se hace `scrollIntoView`, nunca
+`.focus()` — ver las trampas de iOS.
 
 Al editar se sube el **`updatedAt` del item**, no el del estado. La fusión resuelve cada
 gasto por su propio `updatedAt`: el que se editó último gana. Sin eso, editar un monto en
