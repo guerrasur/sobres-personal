@@ -14,9 +14,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Sobres">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --paper:#E9E6EF;
@@ -29,13 +26,18 @@
   --clay:#9E2F27;
   --line:rgba(34,28,51,.14);
   --radius:3px;
+  /* Tipografías del sistema: la app tiene que verse igual de bien sin red, y
+     en el subte no hay a quién pedirle un woff2. Ver CLAUDE.md. */
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI Variable Text','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --display:-apple-system,BlinkMacSystemFont,'Segoe UI Variable Display','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
   background:var(--paper);
   color:var(--ink);
-  font-family:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-family:var(--sans);
   font-size:15px;
   line-height:1.5;
   -webkit-font-smoothing:antialiased;
@@ -43,14 +45,33 @@ body{
   padding:0 0 64px;
 }
 .wrap{max-width:760px;margin:0 auto;padding:0 20px}
-h1,h2,h3{font-family:'Bricolage Grotesque','Public Sans',sans-serif;margin:0;line-height:1.05}
-.num{font-family:'Space Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.05}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
 
 /* header */
 header{padding:34px 0 26px;border-bottom:1px solid var(--line)}
 h1{font-size:31px;font-weight:800;letter-spacing:-.02em}
-.ver{font-family:'Space Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.06em;color:var(--ink-soft);margin-top:7px}
+.ver{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--ink-soft);margin-top:7px}
 .sub{color:var(--ink-soft);font-size:13px;margin-top:6px}
+
+/* estado de red: se ve sin abrir Ajustes, que es el punto de anotar en el subte */
+.netbar{
+  display:inline-block;margin-top:12px;padding:6px 11px;border-radius:2px;
+  font-size:12px;font-weight:600;letter-spacing:.01em;
+  background:rgba(75,47,160,.11);color:var(--violet);border:1px solid rgba(75,47,160,.28);
+}
+.netbar.err{background:rgba(158,47,39,.10);color:var(--clay);border-color:rgba(158,47,39,.3)}
+/* display: explícito le gana a [hidden] del navegador, y el cartel no se
+   podría esconder nunca. */
+.netbar[hidden],.update[hidden]{display:none}
+
+/* versión nueva esperando */
+.update{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;
+  padding:11px 14px;border-radius:var(--radius);font-size:13px;
+  background:rgba(15,110,99,.10);border:1px solid rgba(15,110,99,.34);
+}
+.update button{background:var(--teal);border-color:var(--teal);margin-left:auto}
 
 /* aviso de formato */
 .notice{
@@ -62,7 +83,7 @@ h1{font-size:31px;font-weight:800;letter-spacing:-.02em}
 /* hoy */
 .today{padding:30px 0 8px}
 .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
-.big{font-family:'Space Mono',monospace;font-size:52px;font-weight:700;letter-spacing:-.03em;line-height:1;margin:10px 0 4px}
+.big{font-family:var(--mono);font-size:52px;font-weight:700;letter-spacing:-.03em;line-height:1;margin:10px 0 4px}
 .big.ok{color:var(--teal)} .big.warn{color:var(--ochre)} .big.over{color:var(--clay)} .big.idle{color:var(--ink-soft)}
 .big-note{font-size:13px;color:var(--ink-soft)}
 
@@ -76,14 +97,14 @@ h1{font-size:31px;font-weight:800;letter-spacing:-.02em}
 .daily-chip:hover{opacity:1;border-color:var(--violet)}
 .daily-chip.open{border-bottom-color:transparent;border-radius:var(--radius) var(--radius) 0 0}
 .dc-k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
-.dc-v{font-family:'Space Mono',monospace;font-weight:700;font-size:18px}
+.dc-v{font-family:var(--mono);font-weight:700;font-size:18px}
 .dc-mode{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:3px 7px;border-radius:2px;background:rgba(75,47,160,.12);color:var(--violet);white-space:nowrap}
 .dc-mode.manual{background:rgba(184,106,18,.16);color:var(--ochre)}
 .dc-mode.off{background:rgba(34,28,51,.08);color:var(--ink-soft)}
 .dc-caret{margin-left:auto;color:var(--ink-soft);font-size:12px}
 .why{background:var(--paper-2);border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);padding:6px 14px 14px}
 .why-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:5px 0;font-size:13px}
-.why-row .n{font-family:'Space Mono',monospace;font-weight:700;white-space:nowrap}
+.why-row .n{font-family:var(--mono);font-weight:700;white-space:nowrap}
 .why-row.sum{border-top:1px solid var(--line);margin-top:5px;padding-top:9px}
 .why-row.res{border-top:1.5px solid var(--ink);margin-top:5px;padding-top:9px;font-size:15px;font-weight:600}
 .why-row.res .n{font-size:17px}
@@ -96,14 +117,14 @@ h1{font-size:31px;font-weight:800;letter-spacing:-.02em}
   border:none;border-radius:var(--radius);padding:12px 14px 4px;font-family:inherit;font-size:15px;touch-action:manipulation}
 .tally-head:hover{opacity:1}
 .t-k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
-.t-v{font-family:'Space Mono',monospace;font-weight:700;font-size:18px}
+.t-v{font-family:var(--mono);font-weight:700;font-size:18px}
 .t-v.up{color:var(--teal)} .t-v.down{color:var(--ochre)} .t-v.flat{color:var(--ink-soft)}
 .tally-sub{font-size:12px;color:var(--ink-soft);padding:0 14px 12px}
 .day{display:flex;align-items:baseline;gap:10px;padding:9px 14px;border-top:1px solid var(--line);font-size:13px}
 .day .dw{width:5.4em;color:var(--ink-soft);white-space:nowrap}
 .day .dk{width:5.6em;color:var(--ink-soft);white-space:nowrap}
-.day .dn{flex:1;text-align:right;font-family:'Space Mono',monospace;font-size:11px;color:var(--ink-soft);opacity:.75;white-space:nowrap;overflow:hidden}
-.day .dv{font-family:'Space Mono',monospace;font-weight:700;white-space:nowrap}
+.day .dn{flex:1;text-align:right;font-family:var(--mono);font-size:11px;color:var(--ink-soft);opacity:.75;white-space:nowrap;overflow:hidden}
+.day .dv{font-family:var(--mono);font-weight:700;white-space:nowrap}
 .day.up .dv{color:var(--teal)} .day.up .dk{color:var(--teal);opacity:.85}
 .day.down .dv{color:var(--ink-soft)} .day.down{background:rgba(184,106,18,.06)}
 .day.zero .dv{color:var(--ink-soft);opacity:.7}
@@ -117,7 +138,7 @@ h1{font-size:31px;font-weight:800;letter-spacing:-.02em}
 .env .fill{position:absolute;left:0;right:0;bottom:0;background:var(--violet);opacity:.16;transition:height .35s ease}
 .env.overflow .fill{background:var(--clay);opacity:.24}
 .env .d{position:absolute;top:6px;left:0;right:0;text-align:center;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
-.env .v{position:absolute;bottom:7px;left:0;right:0;text-align:center;font-family:'Space Mono',monospace;font-size:11px;font-weight:700}
+.env .v{position:absolute;bottom:7px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700}
 .strip-legend{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft);padding-top:6px;border-top:1px solid var(--line);margin-top:14px}
 
 /* form */
@@ -135,12 +156,12 @@ input,select,textarea{
 input[type="number"],input[type="text"],input[type="date"],input[type="password"]{
   -webkit-appearance:none;appearance:none;
 }
-input.num-in{font-family:'Space Mono',monospace;font-weight:700}
+input.num-in{font-family:var(--mono);font-weight:700}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--violet);outline-offset:1px}
 input:disabled,select:disabled{background:rgba(34,28,51,.05);color:var(--ink-soft)}
 .f-amount{flex:1 1 130px} .f-cat{flex:2 1 200px} .f-note{flex:2 1 180px} .f-date{flex:1 1 150px}
 button{
-  font-family:'Public Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;
+  font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;
   background:var(--violet);color:#fff;border:1px solid var(--violet);
   border-radius:var(--radius);padding:10px 18px;transition:opacity .15s;
 }
@@ -161,7 +182,7 @@ h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
 .tag.ingreso{background:rgba(15,110,99,.13);color:var(--teal)}
 .item .desc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .item .when{font-size:12px;color:var(--ink-soft);white-space:nowrap}
-.item .amt{font-family:'Space Mono',monospace;font-weight:700;white-space:nowrap}
+.item .amt{font-family:var(--mono);font-weight:700;white-space:nowrap}
 .item .del{background:none;border:none;color:var(--ink-soft);font-size:16px;padding:2px 4px;line-height:1}
 .item .del:hover{color:var(--clay)}
 .empty{padding:26px 0;color:var(--ink-soft);font-size:14px}
@@ -170,7 +191,7 @@ h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
 .totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-top:14px}
 .tot{background:var(--paper-2);padding:14px}
 .tot .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
-.tot .v{font-family:'Space Mono',monospace;font-size:21px;font-weight:700;margin-top:5px}
+.tot .v{font-family:var(--mono);font-size:21px;font-weight:700;margin-top:5px}
 .tot.violet .v{color:var(--violet)} .tot.teal .v{color:var(--teal)} .tot.ochre .v{color:var(--ochre)}
 
 /* config */
@@ -186,6 +207,7 @@ summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-soft);lett
 .sync-dot.on{background:var(--teal);opacity:1}
 .sync-dot.busy{background:var(--ochre);opacity:1}
 .sync-dot.err{background:var(--clay);opacity:1}
+.sync-dot.pend{background:var(--violet);opacity:1}
 .sync-msg{font-size:12px;color:var(--ink-soft);align-self:center}
 footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 @media (max-width:520px){
@@ -202,8 +224,13 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <header>
   <h1>Sobres</h1>
-  <div class="ver">v1.2.0</div>
+  <div class="ver">v1.3.0</div>
   <div class="sub">Un sobre por día. Cuando se vacía, se vació.</div>
+  <div class="netbar" id="netBar" hidden></div>
+  <div class="update" id="updateBar" hidden>
+    <span>Hay una versión nueva de Sobres.</span>
+    <button class="mini" id="updateBtn">Actualizar</button>
+  </div>
   <div class="notice" id="notice" hidden></div>
 </header>
 
@@ -452,6 +479,25 @@ function normalize(d){
   };
 }
 
+/* ---------- cola de cambios sin sincronizar ----------
+   Vive en el blob de sincronización, no en el estado: es de este dispositivo.
+   Se declara acá arriba porque save() la marca, y save() corre antes que el
+   resto del bloque de sincronización. */
+const SKEY = 'sobres.sync';
+let sync = (()=>{ try{ return JSON.parse(localStorage.getItem(SKEY)) || {}; }catch(e){ return {}; } })();
+function saveSync(){ try{ localStorage.setItem(SKEY, JSON.stringify(sync)); }catch(e){} }
+
+const pendCount = () => (sync.pending || []).length;
+const anyPending = () => pendCount() > 0 || !!sync.dirty;
+function markPending(id){
+  const p = new Set((sync.pending || []).map(Number));
+  if(id != null) p.add(Number(id));
+  sync.pending = [...p];
+  sync.dirty = true;
+  saveSync();
+}
+function clearPending(){ sync.pending = []; sync.dirty = false; saveSync(); }
+
 /* ---------- estado ---------- */
 let blocked = false;      /* datos de una versión más nueva: no escribir nada */
 let migratedOnLoad = false;
@@ -505,7 +551,7 @@ function save(touch){
   if(!Array.isArray(state.deleted)) state.deleted = [];
   state.schema = SCHEMA;
   try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
-  if(touch !== false) schedulePush();
+  if(touch !== false){ sync.dirty = true; saveSync(); schedulePush(); }
 }
 
 /* ---------- períodos y cálculo del sobre diario ---------- */
@@ -676,7 +722,8 @@ function render(){
     : `<div class="empty">Todavía no anotaste nada. Empezá por el primer café.</div>`;
   document.querySelectorAll('.del[data-id]').forEach(b=>b.onclick=()=>{
     state.deleted = [...(state.deleted||[]), Number(b.dataset.id)];
-    state.items = state.items.filter(x=>x.id!=b.dataset.id); save(); render();
+    state.items = state.items.filter(x=>x.id!=b.dataset.id);
+    markPending(b.dataset.id); save(); render();
   });
 
   document.getElementById('cfgMode').value = state.dailyMode;
@@ -811,13 +858,15 @@ document.getElementById('date').value = todayISO();
 document.getElementById('add').onclick = () => {
   const a = Math.round(Number(document.getElementById('amount').value));
   if(!a || a<=0){ document.getElementById('amount').focus(); return; }
+  const id = Date.now();
   state.items.push({
-    id: Date.now(),
+    id,
     date: document.getElementById('date').value || todayISO(),
     amount: a,
     cat: document.getElementById('cat').value,
     note: document.getElementById('note').value.trim()
   });
+  markPending(id);
   save();
   document.getElementById('amount').value=''; document.getElementById('note').value='';
   render(); document.getElementById('amount').focus();
@@ -898,27 +947,72 @@ document.getElementById('wipe').onclick = () => {
 };
 
 /* ---------- sincronización con un Gist privado ---------- */
-const SKEY = 'sobres.sync';
 const FILE = 'sobres.json';
-let sync = (()=>{ try{ return JSON.parse(localStorage.getItem(SKEY)) || {}; }catch(e){ return {}; } })();
-let pushTimer = null, busy = false;
+let pushTimer = null, retryTimer = null, busy = false, retries = 0, lastErr = '', nextWait = 0;
+
+/* Espera creciente: quedarse en rojo no sirve de nada, y machacar la API
+   tampoco. En segundos. */
+const BACKOFF = [5, 12, 30, 60, 120, 300];
 
 const dot = document.getElementById('syncDot');
 const msg = document.getElementById('syncMsg');
-function status(kind, text){
-  dot.className = 'sync-dot' + (kind ? ' '+kind : '');
+const bar = document.getElementById('netBar');
+const connected = () => !!(sync.token);
+const online = () => navigator.onLine !== false;
+
+/* Cinco estados, y hay que poder distinguirlos de un vistazo:
+   sin configurar · sincronizando · al día · N sin sincronizar · error real. */
+function refreshStatus(){
+  if(!connected()){ paint('', ''); return; }
+  if(busy){ paint('busy', 'Sincronizando…'); return; }
+  if(lastErr){ paint('err', lastErr); return; }
+  if(anyPending()){
+    const n = pendCount();
+    const qué = n ? `${n} ${n === 1 ? 'movimiento' : 'movimientos'} sin sincronizar` : 'Cambios sin sincronizar';
+    const corto = !online() ? `Sin conexión · ${qué}` : qué;
+    const largo = !online() ? `${corto}. Se suben solos cuando vuelva la red.`
+                : nextWait ? `${qué} · reintento en ${nextWait} s`
+                : qué;
+    paint('pend', largo, corto);
+    return;
+  }
+  paint('on', 'Al día');
+}
+
+/* El punto del cartel de arriba es el subte: hay que ver que quedaron cosas
+   sin subir sin tener que abrir Ajustes. */
+function paint(kind, text, corto){
+  dot.className = 'sync-dot' + (kind ? ' ' + kind : '');
   dot.title = text || '';
   msg.textContent = text || '';
+  const mostrar = kind === 'pend' || kind === 'err';
+  bar.hidden = !mostrar;
+  if(mostrar){
+    bar.textContent = corto || text;
+    bar.className = 'netbar' + (kind === 'err' ? ' err' : '');
+  }
 }
-function saveSync(){ try{ localStorage.setItem(SKEY, JSON.stringify(sync)); }catch(e){} }
-const connected = () => !!(sync.token);
 
 async function gh(path, opts={}){
-  const r = await fetch('https://api.github.com'+path, {
-    ...opts,
-    headers:{ 'Authorization':'Bearer '+sync.token, 'Accept':'application/vnd.github+json', ...(opts.headers||{}) }
-  });
-  if(!r.ok) throw new Error(r.status === 401 ? 'El token no es válido o no tiene permiso sobre Gists.' : 'GitHub respondió '+r.status+'.');
+  let r;
+  try{
+    r = await fetch('https://api.github.com'+path, {
+      ...opts,
+      headers:{ 'Authorization':'Bearer '+sync.token, 'Accept':'application/vnd.github+json', ...(opts.headers||{}) }
+    });
+  }catch(err){
+    /* Sin red. No es un error del usuario: se reintenta. */
+    throw Object.assign(new Error('Sin conexión con GitHub.'), { kind:'net' });
+  }
+  if(!r.ok){
+    /* Un token inválido o un Gist que no existe no se arreglan reintentando. */
+    const duro = r.status === 401 || r.status === 404;
+    throw Object.assign(
+      new Error(r.status === 401 ? 'El token no es válido o no tiene permiso sobre Gists.'
+              : r.status === 404 ? 'No se encontró el Gist. Revisá el ID.'
+              : 'GitHub respondió ' + r.status + '.'),
+      { kind: duro ? 'stop' : 'net' });
+  }
   return r.json();
 }
 
@@ -957,7 +1051,10 @@ async function pull(){
   if(!res.ok){
     /* Un dispositivo con la app vieja no puede entender lo que subió uno nuevo.
        Pisar el Gist acá es la forma más rápida de perder los datos: mejor frenar. */
-    if(res.reason === 'too-new'){ block(res.schema, 'gist'); render(); throw new Error('Datos de una versión más nueva. No se tocó nada.'); }
+    if(res.reason === 'too-new'){
+      block(res.schema, 'gist'); render();
+      throw Object.assign(new Error('Datos de una versión más nueva. No se tocó nada.'), { kind:'stop' });
+    }
     return;
   }
   merge(res.state);
@@ -975,31 +1072,60 @@ async function push(){
     sync.gist = g.id; saveSync();
     document.getElementById('ghGist').value = g.id;
   }
+  /* Recién acá se vacía la cola: subió de verdad. */
+  clearPending();
+}
+
+/* Todo lo que se anota sin conexión queda en la cola y se sube solo. El
+   usuario no tiene que apretar nada. */
+function flush(){
+  if(blocked || !connected() || busy || !anyPending()) return;
+  run(async()=>{ await pull(); await push(); });
 }
 
 function schedulePush(){
   if(blocked || !connected()) return;
   clearTimeout(pushTimer);
-  pushTimer = setTimeout(()=>run(push, 'Guardado en GitHub'), 1200);
+  if(!online()){ refreshStatus(); return; }   /* ya está en la cola; se sube al volver */
+  pushTimer = setTimeout(flush, 1200);
 }
 
-async function run(fn, okText){
-  if(busy) return; busy = true;
-  status('busy','Sincronizando…');
-  try{ await fn(); status('on', okText); }
-  catch(e){ status('err', e.message); }
-  finally{ busy = false; }
+function scheduleRetry(){
+  clearTimeout(retryTimer);
+  nextWait = BACKOFF[Math.min(retries, BACKOFF.length - 1)];
+  retries++;
+  retryTimer = setTimeout(()=>{ retryTimer = null; nextWait = 0; flush(); }, nextWait * 1000);
 }
+
+async function run(fn){
+  if(busy) return;
+  busy = true; refreshStatus();
+  try{
+    await fn();
+    retries = 0; nextWait = 0; lastErr = '';
+    clearTimeout(retryTimer); retryTimer = null;
+  }catch(e){
+    if(e && e.kind === 'stop'){ lastErr = e.message; retries = 0; nextWait = 0; }
+    else { lastErr = ''; if(anyPending()) scheduleRetry(); }
+  }finally{
+    busy = false; refreshStatus();
+  }
+}
+
+/* Vuelve la red: se sube solo, sin esperar el próximo backoff. */
+window.addEventListener('online', ()=>{ retries = 0; nextWait = 0; clearTimeout(retryTimer); retryTimer = null; flush(); refreshStatus(); });
+window.addEventListener('offline', refreshStatus);
 
 document.getElementById('ghToken').value = sync.token || '';
 document.getElementById('ghGist').value = sync.gist || '';
-document.getElementById('ghToken').onchange = e => { sync.token = e.target.value.trim(); saveSync(); status(connected()?'on':'', connected()?'Token guardado':''); };
-document.getElementById('ghGist').onchange  = e => { sync.gist  = e.target.value.trim(); saveSync(); };
-document.getElementById('syncNow').onclick = () => run(async()=>{ await pull(); await push(); }, 'Al día');
+document.getElementById('ghToken').onchange = e => { sync.token = e.target.value.trim(); lastErr = ''; retries = 0; saveSync(); refreshStatus(); };
+document.getElementById('ghGist').onchange  = e => { sync.gist  = e.target.value.trim(); lastErr = ''; retries = 0; saveSync(); refreshStatus(); };
+document.getElementById('syncNow').onclick = () => { lastErr = ''; retries = 0; run(async()=>{ await pull(); await push(); }); };
 document.getElementById('syncOff').onclick = () => {
   sync = {}; saveSync();
+  clearTimeout(retryTimer); retryTimer = null; lastErr = ''; retries = 0; nextWait = 0;
   document.getElementById('ghToken').value=''; document.getElementById('ghGist').value='';
-  status('', 'Desconectado. Los gastos siguen guardados acá.');
+  paint('', 'Desconectado. Los gastos siguen guardados acá.');
 };
 
 const cerroAlgo = closeDays();
@@ -1010,20 +1136,59 @@ render();
    el push del arranque los sube igual. */
 if(migratedOnLoad || cerroAlgo) save(false);
 
-if(connected()){
-  status('on','Conectado');
-  run(async()=>{ await pull(); await push(); }, 'Al día');
-  document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState !== 'visible') return;
-    /* volver a la app después de medianoche también cierra el día */
-    if(closeDays()){ save(false); render(); }
-    if(!busy) run(pull,'Al día');
+refreshStatus();
+if(connected() && online()) run(async()=>{ await pull(); await push(); });
+
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState !== 'visible') return;
+  /* volver a la app después de medianoche también cierra el día */
+  if(closeDays()){ save(false); render(); }
+  if(swReg) swReg.update();     /* ¿hay versión nueva esperando? */
+  if(!connected() || !online() || busy) return;
+  run(async()=>{ await pull(); if(anyPending()) await push(); });
+});
+
+/* ---------- service worker: abrir sin señal ----------
+   Sin skipWaiting automático. La app anclada a inicio se queda abierta días, y
+   recargarla de golpe abajo de alguien que está anotando un gasto es peor que
+   esperar: se avisa y el usuario decide. Sin este aviso habría que borrar el
+   ícono y volver a anclarlo para ver una versión nueva. */
+let swReg = null, pidioActualizar = false;
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load', async ()=>{
+    try{
+      /* updateViaCache:'none' — el sw.js no se sirve nunca desde el caché
+         HTTP, si no una versión vieja se perpetúa a sí misma. */
+      swReg = await navigator.serviceWorker.register('sw.js', { updateViaCache:'none' });
+      if(swReg.waiting && navigator.serviceWorker.controller) showUpdate();
+      swReg.addEventListener('updatefound', ()=>{
+        const nuevo = swReg.installing;
+        if(!nuevo) return;
+        nuevo.addEventListener('statechange', ()=>{
+          /* sin controller es la primera instalación, no una actualización */
+          if(nuevo.state === 'installed' && navigator.serviceWorker.controller) showUpdate();
+        });
+      });
+    }catch(e){}
   });
-}else{
-  document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState === 'visible' && closeDays()){ save(false); render(); }
+  /* Sólo se recarga si el usuario tocó Actualizar. En la primera visita el
+     clients.claim() del worker también dispara este evento, y recargar ahí
+     sería un parpadeo sin motivo. */
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(!pidioActualizar) return;
+    pidioActualizar = false;
+    location.reload();
   });
 }
+function showUpdate(){ document.getElementById('updateBar').hidden = false; }
+document.getElementById('updateBtn').onclick = () => {
+  const w = swReg && swReg.waiting;
+  document.getElementById('updateBtn').disabled = true;
+  document.getElementById('updateBtn').textContent = 'Actualizando…';
+  pidioActualizar = true;
+  if(w) w.postMessage({ type:'SKIP_WAITING' });
+  else location.reload();
+};
 </script>
 </body>
 </html>
