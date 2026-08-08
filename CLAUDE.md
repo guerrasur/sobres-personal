@@ -93,11 +93,46 @@ dice el día, si sobró o se pasó, la diferencia y —en una segunda línea, en
 cortarse contra el ancho— cuánto se gastó de cuánto. Con eso alcanza; el párrafo que
 explicaba el mecanismo se fue.
 
-`dailyMode` puede ser `'auto'` o `'manual'`. En manual aparece la etiqueta ocre "a mano"
-al lado de "Queda hoy": nunca hay que dejar ambiguo de dónde sale el monto, pero tampoco
-hay que tratarlo como un estado a medio configurar. Cuando no hay con qué calcular (sin
-período, período vencido, sin ingresos) el diario **no** se inventa: se muestra "—" y una
-línea corta de qué falta, de una oración, nunca instrucciones.
+`dailyMode` puede ser `'auto'`, `'manual'` o `'none'`. En manual aparece la etiqueta ocre
+"a mano" al lado de "Queda hoy": nunca hay que dejar ambiguo de dónde sale el monto, pero
+tampoco hay que tratarlo como un estado a medio configurar. Cuando no hay con qué calcular
+(sin período, período vencido, sin ingresos) el diario **no** se inventa: se muestra "—" y
+una línea corta de qué falta, de una oración, nunca instrucciones.
+
+## El modo sin límite
+
+`dailyMode: 'none'` es un modo real, no una variante cosmética: hay gente que quiere
+anotar en qué se le va la plata y nada más. Con él activo el número grande deja de ser lo
+que queda y pasa a ser **lo gastado hoy**, y desaparecen el sobre diario, la barra de
+proporción, la cuenta que se abre al tocar el número, la tira semanal, el sobrante del
+período y los tramos con sus ingresos, que no se piden ni se muestran.
+
+Ahí "gastado hoy" es **todo lo anotado hoy** (`totalOn`), no sólo `diario` (`spentOn`).
+Sin sobre no hay tres bolsillos de los que salga cada cosa: separar el transporte del
+resto en ese número sería contar mal. Las categorías siguen existiendo y siguen separando
+los totales del mes, que es donde ganan algo.
+
+`dailyInfo()` devuelve `ready:false` en este modo, así que `closeDays()` no cierra ni un
+día: sin sobre conocido no hay diferencia que anotar. Todo lo demás —las tres categorías,
+los totales del mes, el historial, editar, borrar, la sincronización— funciona igual, y
+desde Ajustes se pasa a cualquiera de los otros dos modos sin perder un gasto.
+
+## El primer uso
+
+Al abrir la app por primera vez, un popup pregunta cómo se la va a usar: sin límite, un
+monto por día escrito a mano, o calculado del sueldo **dividido 30** — ese número se
+muestra en el popup antes de confirmar, porque nadie elige a ciegas. Las tres opciones son
+las tres formas de contestar "cuánto puedo gastar hoy", y las dos últimas terminan en
+`dailyMode:'manual'`: la diferencia está en quién hace la división.
+
+Aparece **una sola vez**: `estreno` pide que no haya nada en `localStorage` **ni** un Gist
+configurado —un dispositivo con token es el segundo aparato de alguien que ya usa la app,
+no un estreno— y al confirmar queda `setup:true`, que no se vuelve a bajar nunca, ni
+siquiera con "Borrar todo". En la fusión `setup` no se pisa: si de algún lado ya está en
+true, queda en true.
+
+**Una instalación nueva arranca vacía.** Los gastos de ejemplo que había cableados en
+`seed()` se fueron: le aparecían como propios a cualquiera que abriera la app.
 
 Las tres categorías no son decorativas, cada una sale de un bolsillo distinto. Adentro
 del código se llaman como siempre; en pantalla van con el nombre de la derecha, que se
@@ -115,6 +150,28 @@ entiende sin saber cómo está hecha la app:
 El mismo criterio vale para el resto de los rótulos: "sobrante del período", "sobres
 diarios", "sale de", "únicos" son términos internos. En Ajustes, el período se llama
 **tramo** ("de un cobro al otro") y los ingresos, **lo que cobrás en este tramo**.
+
+## Importar por voz vive en `Resumen`
+
+Un atajo de iOS escribe una línea por gasto dictado en un `.txt` y la app lo lee
+(`leerDictado()`, la marca de tiempo hace de `id`, ver los comentarios del código). El
+botón y el panel de confirmación viven **en `Resumen`, junto a exportar y respaldo**, no
+en la pantalla principal: no se usa todos los días y en el formulario de anotar competía
+por atención con el único botón que importa ahí, que es Anotar. Traerlo de vuelta al lado
+del monto es deshacer eso; la funcionalidad, en cambio, se queda.
+
+## El aviso de exportar
+
+Al mes del primer gasto anotado, y después una vez por mes, la pantalla principal muestra
+un aviso —**nunca un popup**— que ofrece bajar el CSV y copiar el texto que se le pega a
+una IA junto con el archivo. Es lo único que la app dice sin que se le pregunte, y por eso
+va discreto y abajo del formulario: anotar un gasto sigue siendo lo primero que se puede
+hacer al abrir.
+
+Ocultarlo lo corre un mes, no lo apaga: `nudged` guarda la fecha en que se ocultó y el mes
+siguiente se cuenta desde ahí. Sin gastos anotados no aparece nunca, porque no hay nada
+que analizar. El texto que se copia es literal y está en `PROMPT_IA`: si se toca, se toca
+entero y a propósito.
 
 ## Restricciones que no se negocian
 
@@ -145,10 +202,11 @@ nada de credenciales en el código, ni de ejemplo.
 Un Gist secreto con un único archivo, `sobres.json`, creado por la app la primera vez.
 Permiso necesario en el token: **Gists: read and write**, nada más.
 
-El estado que se persiste (schema 4):
+El estado que se persiste (schema 5):
 
 ```json
-{ "schema": 4, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
+{ "schema": 5, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
+  "setup": true, "nudged": "",
   "periods": [ { "id": 1, "start": "2026-08-05", "end": "2026-09-05", "transport": 60000,
                  "incomes": [ { "id": 1, "date": "2026-08-05", "amount": 900000, "note": "sueldo" } ] } ],
   "closed": [ { "date": "2026-08-05", "envelope": 25870 } ],
@@ -175,6 +233,11 @@ La fusión entre dispositivos (`merge()`) sigue tres reglas, y están así a pro
 
 Los `closed` se unen por `date`, como los items: dos dispositivos sin conexión entre
 medio cerraron días distintos y los dos valen.
+
+`setup` y `nudged` quedan afuera de la regla 3 a propósito. `setup` es un o lógico: si en
+algún dispositivo ya se eligió cómo usar la app, se eligió, y el popup de primer uso no
+tiene por qué volver a aparecer en el otro. `nudged` se queda con la fecha más nueva, para
+que el aviso de exportar no reaparezca en el aparato donde ya se ocultó.
 
 `save()` acepta `save(false)` para persistir sin marcar tiempo ni disparar un push. Se usa
 después de traer datos remotos, para no rebotar el cambio de vuelta al Gist.
@@ -272,12 +335,19 @@ en `manual` con el valor que ya tenía, así el número no cambia solo debajo de
 del usuario. `up2to3` arranca `closed` vacío y deja que `closeDays()` complete los días
 ya pasados en el primer arranque. `up3to4` pone el `updatedAt` de cada gasto en cero:
 inventarle una fecha de edición a un gasto viejo sería darle la última palabra en una
-fusión. El criterio se mantiene: nunca completar con datos que el usuario no cargó.
+fusión. `up4to5` marca `setup:true` y deja `nudged` vacío: que existan estos datos quiere
+decir que alguien ya venía usando la app, así que el popup de primer uso no le va, y el
+aviso de exportar le cae al mes del primer gasto como a cualquiera. El criterio se
+mantiene: nunca completar con datos que el usuario no cargó.
 
 **Un campo nuevo obliga a subir el schema**, aunque parezca compatible. `normalize()`
 reconstruye el objeto campo por campo, así que una versión vieja de la app que lea datos
 nuevos no ignora lo que no conoce: lo borra, y después lo sube así al Gist. Subir el
 número hace que esa versión se bloquee en vez de destruir el campo.
+
+**Un valor nuevo en un campo que ya existe cuenta igual.** `dailyMode:'none'` obligó a
+subir a 5 aunque el campo estuviera desde el 2: el `normalize()` viejo lo colapsaba a
+`'manual'` y le devolvía al usuario un sobre diario que nunca pidió.
 
 La migración baja a disco con `save(false)`. Con `save()` a secas, un dispositivo que
 abre con datos viejos marcaría `updatedAt` a ahora y le ganaría la configuración al que
