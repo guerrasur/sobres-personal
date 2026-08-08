@@ -153,6 +153,20 @@ input:disabled,select:disabled{background:rgba(34,28,51,.05);color:var(--ink-sof
 #note{margin-top:9px}
 .acts{display:flex;align-items:center;gap:10px;margin-top:12px}
 #add{flex:1;padding:13px 18px;font-size:15px}
+/* El micrófono al lado de Anotar: chico a la vista para no competir con la
+   acción principal, nunca chico para el dedo — 46px de lado, arriba del mínimo
+   táctil, aunque el glifo mida 19. */
+.icon{
+  flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  width:46px;height:46px;padding:0;
+  background:transparent;color:var(--ink-soft);border-color:var(--line);
+  touch-action:manipulation;
+}
+.icon:hover{color:var(--violet);border-color:var(--violet);opacity:1}
+.icon svg{display:block}
+/* display:inline-flex explícito le gana a [hidden]: sin esta línea el botón no
+   se puede esconder mientras se edita un gasto. Ver .netbar. */
+.icon[hidden]{display:none}
 .link{background:none;border:none;color:var(--ink-soft);font-size:13px;font-weight:600;padding:8px 2px;text-decoration:underline;touch-action:manipulation}
 .link:hover{color:var(--violet);opacity:1}
 .daterow{margin-top:10px}
@@ -243,7 +257,9 @@ h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
 .tot .v{font-family:var(--mono);font-size:21px;font-weight:700;margin-top:5px}
 .tot.violet .v{color:var(--violet)} .tot.teal .v{color:var(--teal)} .tot.ochre .v{color:var(--ochre)}
 
-/* importar lo dictado: qué va a entrar, antes de confirmar */
+/* importar lo dictado: qué va a entrar, antes de confirmar.
+   `.imp-msg` no lleva display propio: así el [hidden] del navegador alcanza. */
+.imp-msg{font-size:12px;color:var(--ink-soft);margin-top:11px}
 .imp-head{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin:16px 0 2px}
 .imp-bad{font-family:var(--mono);font-size:11px;color:var(--ochre);padding:3px 0;overflow-wrap:anywhere}
 .imp-fmt{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:14px}
@@ -280,7 +296,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v2.1.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v2.2.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -317,6 +333,18 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
     <input id="note" type="text" placeholder="en qué (opcional)" aria-label="En qué">
     <div class="acts">
       <button id="add">Anotar</button>
+      <button class="icon" id="impTxtBtn"
+              title="Importar los gastos que dictaste por voz"
+              aria-label="Importar los gastos que dictaste por voz">
+        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" focusable="false"
+             fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9.2" y="2.8" width="5.6" height="11.4" rx="2.8"/>
+          <path d="M5.6 11.4a6.4 6.4 0 0 0 12.8 0"/>
+          <path d="M12 17.8v3.4"/>
+        </svg>
+      </button>
+      <input type="file" id="impTxtFile" accept=".txt,text/plain" hidden>
       <button class="ghost" id="cancelEdit" hidden>Cancelar</button>
       <button class="link" id="otroDia" aria-expanded="false" aria-controls="dateRow">otro día</button>
     </div>
@@ -324,6 +352,11 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <input id="date" type="date" aria-label="Día del gasto">
     </div>
   </div>
+
+  <!-- Lo dictado por voz: la línea de resultado y, si hay algo que confirmar,
+       el panel con lo que va a entrar. -->
+  <div class="imp-msg" id="impMsg" hidden></div>
+  <div class="box" id="importBox" hidden></div>
 
   <section>
     <div class="h-row"><h2>Anotado hoy</h2></div>
@@ -426,12 +459,8 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <button class="ghost mini" id="expJson">Guardar respaldo</button>
       <button class="ghost mini" id="impBtn">Cargar respaldo</button>
       <input type="file" id="impFile" accept=".json" hidden>
-      <button class="ghost mini" id="impTxtBtn">Importar por voz</button>
-      <input type="file" id="impTxtFile" accept=".txt,text/plain" hidden>
       <button class="ghost mini" id="wipe">Borrar todo</button>
     </div>
-
-    <div class="box" id="importBox" hidden></div>
     <footer>
       Un sobre por día. Cuando se vacía, se vació.<br>
       Sin sincronizar, los datos quedan solo en este navegador y no necesitan internet. Si limpiás los datos del navegador, se pierden.
@@ -939,6 +968,9 @@ function renderForm(){
   document.getElementById('formTitle').textContent = editando ? 'Editando un gasto' : '';
   document.getElementById('add').textContent = editando ? 'Guardar cambios' : 'Anotar';
   document.getElementById('cancelEdit').hidden = !editando;
+  /* Editando ya hay dos botones y el link: el micrófono se corre. Importar en
+     medio de una edición no es algo que nadie quiera hacer. */
+  document.getElementById('impTxtBtn').hidden = editando;
   document.querySelectorAll('.cat').forEach(b=>b.classList.toggle('on', b.dataset.cat === catSel));
 }
 
@@ -1030,6 +1062,7 @@ document.getElementById('add').onclick = () => {
        anterior puesta haría que el próximo café se archive donde no va. */
     catSel = 'diario';
   }
+  impMsg = '';          /* la línea de la última importación ya cumplió */
   save();
   render();
   if(editandoId == null) document.getElementById('amount').focus();
@@ -1254,21 +1287,19 @@ function leerDictado(texto){
   return { nuevos, malas, repes };
 }
 
-/* Nada entra sin que el usuario vea qué entra y pueda cancelar. */
+/* Nada entra sin que el usuario vea qué entra y pueda cancelar. `imp` es lo que
+   está esperando confirmación; `impMsg` es la línea de resultado que queda al
+   lado del formulario cuando no hay panel que mostrar. */
 let imp = null;
+let impMsg = '';
 
 function renderImport(){
   const box = document.getElementById('importBox');
+  const linea = document.getElementById('impMsg');
+  linea.textContent = impMsg;
+  linea.hidden = !impMsg;
   box.hidden = !imp;
   if(!imp) return;
-
-  if(imp.hechos != null){
-    box.innerHTML = `<div class="box-head"><span class="eyebrow">Importar por voz</span></div>
-      <p class="box-copy">Listo: ${imp.hechos} ${imp.hechos===1?'gasto anotado':'gastos anotados'}.</p>
-      <div class="tools"><button class="ghost mini" id="impClose">Cerrar</button></div>`;
-    document.getElementById('impClose').onclick = () => { imp = null; renderImport(); };
-    return;
-  }
 
   const { nuevos, malas, repes } = imp;
   const ya = repes ? ` ${repes} ${repes===1?'ya estaba':'ya estaban'} de antes.` : '';
@@ -1303,20 +1334,25 @@ function renderImport(){
   partes.push(`<div class="imp-fmt">una línea por gasto: fecha y hora | monto | detalle</div>`);
 
   box.innerHTML = partes.join('');
-  document.getElementById('impCancel').onclick = () => { imp = null; renderImport(); };
+  document.getElementById('impCancel').onclick = () => { imp = null; impMsg = ''; renderImport(); };
   const ok = document.getElementById('impOk');
   if(ok){
     ok.disabled = blocked;
     ok.onclick = () => {
       if(blocked || !imp || !imp.nuevos.length) return;
+      const n = imp.nuevos.length;
       imp.nuevos.forEach(x => { state.items.push(x); markPending(x.id); });
-      imp = { hechos: imp.nuevos.length };
+      /* El panel se cierra solo: lo que había que confirmar ya está anotado y
+         se ve en la lista del día. Queda la línea, que no ocupa lugar. */
+      imp = null;
+      impMsg = `Listo: ${n === 1 ? '1 gasto anotado' : n + ' gastos anotados'}.`;
       save();
       render();
     };
   }
 }
 
+/* El botón abre el selector directo: un toque y el archivo. */
 document.getElementById('impTxtBtn').onclick = () => document.getElementById('impTxtFile').click();
 document.getElementById('impTxtFile').onchange = e => {
   const f = e.target.files[0];
@@ -1325,8 +1361,26 @@ document.getElementById('impTxtFile').onchange = e => {
   e.target.value = '';
   if(!f) return;
   const r = new FileReader();
-  r.onload = () => { imp = leerDictado(r.result); renderImport(); };
-  r.onerror = () => { imp = null; renderImport(); alert('El archivo no se pudo leer.'); };
+  r.onload = () => {
+    const leido = leerDictado(r.result);
+    /* Sin nada nuevo y sin líneas rotas no hay nada que confirmar: una línea y
+       listo, en vez de abrir un panel vacío. Si hay líneas rotas el panel sí
+       va, que para eso está — hay algo que arreglar en el archivo. */
+    if(!leido.nuevos.length && !leido.malas.length){
+      imp = null;
+      impMsg = leido.repes
+        ? `No hay nada nuevo para importar: ${leido.repes === 1 ? 'el gasto del archivo ya estaba' : 'los ' + leido.repes + ' gastos del archivo ya estaban'}.`
+        : 'No hay nada nuevo para importar: el archivo está vacío.';
+    }else{
+      imp = leido;
+      impMsg = '';
+    }
+    renderImport();
+    /* scrollIntoView y nunca focus(): en iOS el foco programático no levanta el
+       teclado. `nearest` no mueve nada si el panel ya se ve. */
+    if(imp) document.getElementById('importBox').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  };
+  r.onerror = () => { imp = null; impMsg = ''; renderImport(); alert('El archivo no se pudo leer.'); };
   r.readAsText(f);
 };
 
