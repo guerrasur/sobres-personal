@@ -105,6 +105,8 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .mode[hidden]{display:none}
 .big{display:block;font-family:var(--mono);font-size:54px;font-weight:700;letter-spacing:-.03em;line-height:1;margin:8px 0 0}
 .big.ok{color:var(--teal)} .big.warn{color:var(--ochre)} .big.over{color:var(--clay)} .big.idle{color:var(--ink-soft)}
+/* sin límite: lo gastado no es bueno ni malo, es lo que es */
+.big.plain{color:var(--ink)}
 /* la proporción del día, sin repetir el número */
 .bar{display:block;height:5px;margin-top:16px;border-radius:3px;background:rgba(34,28,51,.10);overflow:hidden}
 .bar[hidden]{display:none}
@@ -113,6 +115,9 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .hint{display:block;font-size:12px;color:var(--ink-soft);margin-top:9px}
 .hint:empty{display:none}
 .caret{display:block;font-size:11px;color:var(--ink-soft);margin-top:9px}
+/* display:block explícito le gana a [hidden]: sin esto la cuenta se sigue
+   ofreciendo en el modo sin límite, donde no hay cuenta que abrir. Ver .netbar. */
+.caret[hidden]{display:none}
 
 /* la cuenta, solo cuando se toca el número */
 .why{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:8px 14px 14px;margin-top:12px}
@@ -153,20 +158,6 @@ input:disabled,select:disabled{background:rgba(34,28,51,.05);color:var(--ink-sof
 #note{margin-top:9px}
 .acts{display:flex;align-items:center;gap:10px;margin-top:12px}
 #add{flex:1;padding:13px 18px;font-size:15px}
-/* El micrófono al lado de Anotar: chico a la vista para no competir con la
-   acción principal, nunca chico para el dedo — 46px de lado, arriba del mínimo
-   táctil, aunque el glifo mida 19. */
-.icon{
-  flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
-  width:46px;height:46px;padding:0;
-  background:transparent;color:var(--ink-soft);border-color:var(--line);
-  touch-action:manipulation;
-}
-.icon:hover{color:var(--violet);border-color:var(--violet);opacity:1}
-.icon svg{display:block}
-/* display:inline-flex explícito le gana a [hidden]: sin esta línea el botón no
-   se puede esconder mientras se edita un gasto. Ver .netbar. */
-.icon[hidden]{display:none}
 .link{background:none;border:none;color:var(--ink-soft);font-size:13px;font-weight:600;padding:8px 2px;text-decoration:underline;touch-action:manipulation}
 .link:hover{color:var(--violet);opacity:1}
 .daterow{margin-top:10px}
@@ -197,6 +188,47 @@ button.mini{font-size:12px;padding:5px 10px}
 .undo[hidden]{display:none}
 .undo-in{display:flex;align-items:center;gap:12px;max-width:760px;margin:0 auto;padding:12px 20px;font-size:13px}
 .undo button{margin-left:auto;background:transparent;color:var(--violet);border-color:var(--violet)}
+
+/* el aviso de exportar, al mes. Discreto y en el lugar de siempre: no
+   interrumpe, no tapa nada y se puede ocultar. */
+.nudge{
+  margin-top:18px;padding:13px 15px;border-radius:var(--radius);font-size:13px;
+  background:var(--paper-2);border:1px solid var(--line);
+}
+.nudge[hidden]{display:none}
+.nudge-head{display:flex;align-items:baseline;gap:10px}
+.nudge-head b{font-weight:700;flex:1;min-width:0}
+.nudge p{margin:6px 0 0;color:var(--ink-soft);max-width:56ch}
+.nudge .tools{margin-top:12px}
+
+/* primer uso: aparece una sola vez, cuando no hay nada guardado ni un Gist
+   configurado. Una línea por opción y confirmar; lo demás es Ajustes. */
+.onb{
+  position:fixed;inset:0;z-index:20;overflow:auto;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(34,28,51,.55);
+}
+.onb[hidden]{display:none}
+.onb-card{width:100%;max-width:420px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+.onb-card h2{font-size:19px}
+.onb-copy{font-size:13px;color:var(--ink-soft);margin:7px 0 0}
+.onb-opts{display:grid;gap:8px;margin-top:16px}
+.onb-opt{
+  display:block;width:100%;text-align:left;padding:12px 14px;
+  background:#fff;color:var(--ink);border:1px solid var(--line);
+  font-weight:400;touch-action:manipulation;
+}
+.onb-opt b{display:block;font-weight:700;font-size:15px}
+.onb-opt span{display:block;font-size:12px;color:var(--ink-soft);margin-top:2px}
+.onb-opt:hover{border-color:var(--ink-soft);opacity:1}
+.onb-opt.on{border-color:var(--violet);box-shadow:0 0 0 1px var(--violet) inset}
+.onb-opt.on b{color:var(--violet)}
+.onb-field{margin-top:14px}
+.onb-field[hidden]{display:none}
+.onb-calc{font-size:13px;color:var(--ink-soft);margin-top:8px}
+.onb-calc b{font-family:var(--mono);color:var(--ink)}
+#onbOk{width:100%;margin-top:16px;padding:13px 18px;font-size:15px}
+.onb-foot{font-size:12px;color:var(--ink-soft);margin:10px 0 0;text-align:center}
 
 /* listas */
 section{margin-top:34px}
@@ -296,7 +328,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v2.2.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v3.0.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -314,7 +346,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="view" id="viewHoy">
 
   <button class="today" id="todayBtn" aria-expanded="false" aria-controls="why">
-    <span class="eyebrow">Queda hoy <span class="mode" id="dailyBadge" hidden>a mano</span></span>
+    <span class="eyebrow"><span id="todayLabel">Queda hoy</span> <span class="mode" id="dailyBadge" hidden>a mano</span></span>
     <span class="big num" id="todayLeft">—</span>
     <span class="bar" id="todayBar" hidden><i id="todayFill"></i></span>
     <span class="hint" id="todayNote"></span>
@@ -333,18 +365,6 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
     <input id="note" type="text" placeholder="en qué (opcional)" aria-label="En qué">
     <div class="acts">
       <button id="add">Anotar</button>
-      <button class="icon" id="impTxtBtn"
-              title="Importar los gastos que dictaste por voz"
-              aria-label="Importar los gastos que dictaste por voz">
-        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" focusable="false"
-             fill="none" stroke="currentColor" stroke-width="1.7"
-             stroke-linecap="round" stroke-linejoin="round">
-          <rect x="9.2" y="2.8" width="5.6" height="11.4" rx="2.8"/>
-          <path d="M5.6 11.4a6.4 6.4 0 0 0 12.8 0"/>
-          <path d="M12 17.8v3.4"/>
-        </svg>
-      </button>
-      <input type="file" id="impTxtFile" accept=".txt,text/plain" hidden>
       <button class="ghost" id="cancelEdit" hidden>Cancelar</button>
       <button class="link" id="otroDia" aria-expanded="false" aria-controls="dateRow">otro día</button>
     </div>
@@ -353,10 +373,19 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
     </div>
   </div>
 
-  <!-- Lo dictado por voz: la línea de resultado y, si hay algo que confirmar,
-       el panel con lo que va a entrar. -->
-  <div class="imp-msg" id="impMsg" hidden></div>
-  <div class="box" id="importBox" hidden></div>
+  <!-- Al mes del primer gasto, y después una vez por mes: bajar el CSV y
+       pedirle a una IA que lo mire. Un aviso, no un popup. -->
+  <div class="nudge" id="nudge" hidden>
+    <div class="nudge-head">
+      <b id="nudgeTitle"></b>
+      <button class="link" id="nudgeClose" aria-label="Ocultar el aviso">ocultar</button>
+    </div>
+    <p>Bajá el CSV y pegale el texto a una IA para que te diga en qué se te va la plata.</p>
+    <div class="tools">
+      <button class="ghost mini" id="nudgeCsv">Descargar CSV</button>
+      <button class="ghost mini" id="nudgeCopy">Copiar el texto</button>
+    </div>
+  </div>
 
   <section>
     <div class="h-row"><h2>Anotado hoy</h2></div>
@@ -368,7 +397,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <!-- Resumen: la semana, los días cerrados, el mes, todo lo anotado y los ajustes. -->
 <div class="view" id="viewMas" hidden>
 
-  <section>
+  <section id="secWeek">
     <div class="h-row"><h2>La semana</h2><span class="eyebrow" id="weekRange"></span></div>
     <div class="strip" id="strip"></div>
     <div class="strip-legend" id="weekLeft"></div>
@@ -397,7 +426,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
   <details>
     <summary>Ajustes y respaldo</summary>
 
-    <div class="box">
+    <div class="box" id="boxPeriod">
       <div class="box-head">
         <span class="eyebrow">De un cobro al otro</span>
         <select id="pSel" style="width:auto;max-width:60%;font-size:14px;padding:6px 8px"></select>
@@ -426,7 +455,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
     <div class="cfg">
       <div><label for="cfgMode">Cuánto por día</label>
         <select id="cfgMode">
-          <option value="auto">Calculado</option><option value="manual">Lo fijo yo</option>
+          <option value="auto">Calculado</option><option value="manual">Lo fijo yo</option><option value="none">Sin límite</option>
         </select>
       </div>
       <div><label for="cfgDaily">Monto fijo</label><input class="num-in" id="cfgDaily" type="number" inputmode="numeric"></div>
@@ -436,6 +465,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
         </select>
       </div>
     </div>
+    <p class="box-copy">Cambiá acá cuando quieras: “Sin límite” anota los gastos y nada más, “Lo fijo yo” usa el monto de al lado y “Calculado” lo saca de lo que cobrás en el tramo. Los gastos ya anotados quedan igual.</p>
 
     <div class="box">
       <div class="box-head">
@@ -459,8 +489,17 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <button class="ghost mini" id="expJson">Guardar respaldo</button>
       <button class="ghost mini" id="impBtn">Cargar respaldo</button>
       <input type="file" id="impFile" accept=".json" hidden>
+      <button class="ghost mini" id="impTxtBtn"
+              title="Importar los gastos que dictaste por voz">Importar por voz</button>
+      <input type="file" id="impTxtFile" accept=".txt,text/plain" hidden>
       <button class="ghost mini" id="wipe">Borrar todo</button>
     </div>
+
+    <!-- Lo dictado por voz: la línea de resultado y, si hay algo que confirmar,
+         el panel con lo que va a entrar. Vive acá, al lado del botón que lo
+         abre: fuera de la pantalla principal, que es para anotar. -->
+    <div class="imp-msg" id="impMsg" hidden></div>
+    <div class="box" id="importBox" hidden></div>
     <footer>
       Un sobre por día. Cuando se vacía, se vació.<br>
       Sin sincronizar, los datos quedan solo en este navegador y no necesitan internet. Si limpiás los datos del navegador, se pierden.
@@ -469,6 +508,36 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
     </footer>
   </details>
 
+</div>
+
+<!-- Primer uso: una sola vez, cuando no hay nada guardado ni un Gist configurado. -->
+<div class="onb" id="onb" hidden>
+  <div class="onb-card" role="dialog" aria-modal="true" aria-labelledby="onbTitle">
+    <h2 id="onbTitle">¿Cómo querés usar Sobres?</h2>
+    <p class="onb-copy">Se anotan gastos igual en los tres casos.</p>
+    <div class="onb-opts">
+      <button class="onb-opt on" data-onb="none">
+        <b>Sin límite</b><span>Anotar y ver cuánto llevás gastado.</span>
+      </button>
+      <button class="onb-opt" data-onb="fijo">
+        <b>Un monto por día</b><span>Vos decís cuánto y la app te lo descuenta.</span>
+      </button>
+      <button class="onb-opt" data-onb="sueldo">
+        <b>Calculado del sueldo</b><span>Lo que cobrás por mes, dividido 30.</span>
+      </button>
+    </div>
+    <div class="onb-field" id="onbFijo" hidden>
+      <label for="onbDaily">Cuánto por día</label>
+      <input class="num-in" id="onbDaily" type="number" inputmode="numeric" placeholder="0">
+    </div>
+    <div class="onb-field" id="onbSueldo" hidden>
+      <label for="onbSalary">Cuánto cobrás por mes</label>
+      <input class="num-in" id="onbSalary" type="number" inputmode="numeric" placeholder="0">
+      <div class="onb-calc" id="onbCalc"></div>
+    </div>
+    <button id="onbOk">Empezar</button>
+    <p class="onb-foot">Se cambia después en Ajustes.</p>
+  </div>
 </div>
 
 <div class="undo" id="undoBar" hidden>
@@ -482,7 +551,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <script>
 const KEY = 'sobres.v1';
-const SCHEMA = 4;
+const SCHEMA = 5;
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
 const plain = n => new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n||0);
 const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -511,12 +580,16 @@ function addMonths(iso, n){
    schema 3: agrega closed[], el cierre de cada día ya pasado.
    schema 4: agrega updatedAt por item, para que al editar en un dispositivo
              la fusión se quede con esa versión y no con la anterior.
+   schema 5: agrega setup (si ya se eligió cómo usar la app) y nudged (cuándo se
+             ocultó por última vez el aviso de exportar), y un tercer valor para
+             dailyMode: 'none', el modo sin límite diario.
    migrate() es la única puerta de entrada: localStorage, Gist y respaldos
    importados pasan por acá. Si el dato viene de un schema más nuevo que el
    que entiende esta copia de la app, no se toca: se avisa y listo. */
 
 function blankState(){
   return { schema:SCHEMA, daily:10000, dailyMode:'manual', weekStart:1,
+           setup:false, nudged:'',
            periods:[], closed:[], deleted:[], updatedAt:0, items:[] };
 }
 
@@ -529,6 +602,7 @@ function migrate(raw){
   if(from < 2) d = up1to2(d);
   if(from < 3) d = up2to3(d);
   if(from < 4) d = up3to4(d);
+  if(from < 5) d = up4to5(d);
   return {ok:true, from, migrated:from < SCHEMA, state:normalize(d)};
 }
 
@@ -562,6 +636,13 @@ function up3to4(d){
   return { ...d, schema:4, items:d.items.map(x => ({ ...x, updatedAt: int(x && x.updatedAt) })) };
 }
 
+/* `setup:true` no inventa nada: estos datos existen porque alguien ya venía
+   usando la app, y el popup de primer uso no le tiene que aparecer nunca. El
+   aviso de exportar arranca sin ocultar, así cae al mes del primer gasto. */
+function up4to5(d){
+  return { ...d, schema:5, setup:true, nudged:'' };
+}
+
 function normalize(d){
   const b = blankState();
   const periods = (Array.isArray(d.periods) ? d.periods : [])
@@ -580,8 +661,10 @@ function normalize(d){
   return {
     schema: SCHEMA,
     daily: Math.max(0, int(d.daily ?? b.daily)),
-    dailyMode: d.dailyMode === 'auto' ? 'auto' : 'manual',
+    dailyMode: ['auto','manual','none'].includes(d.dailyMode) ? d.dailyMode : 'manual',
     weekStart: Number(d.weekStart) === 0 ? 0 : 1,
+    setup: !!d.setup,
+    nudged: d.nudged ? String(d.nudged).slice(0,10) : '',
     periods,
     closed: (Array.isArray(d.closed) ? d.closed : [])
       .filter(c => c && c.date)
@@ -620,12 +703,19 @@ function clearPending(){ sync.pending = []; sync.dirty = false; saveSync(); }
 /* ---------- estado ---------- */
 let blocked = false;      /* datos de una versión más nueva: no escribir nada */
 let migratedOnLoad = false;
+/* Una instalación nueva de verdad: nada guardado en este navegador y ningún
+   Gist configurado. Un dispositivo que ya tiene token es el segundo aparato de
+   alguien que ya usa la app, no un estreno: ahí el popup no va. */
+let estreno = false;
 let state = load();
 
 function load(){
   let raw = null;
   try{ raw = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
-  if(raw === null || raw === undefined) return seed();
+  if(raw === null || raw === undefined){
+    estreno = !sync.token && !sync.gist;
+    return blankState();
+  }
   const r = migrate(raw);
   if(r.ok){
     migratedOnLoad = r.migrated;
@@ -635,21 +725,7 @@ function load(){
     block(r.schema, 'local');
     return normalize({ ...blankState(), ...raw, items: Array.isArray(raw.items)?raw.items:[] });
   }
-  return seed();
-}
-
-function seed(){
-  const start = todayISO();
-  const s = blankState();
-  s.dailyMode = 'auto';
-  s.periods = [{ id:uid(), start, end:addMonths(start,1), transport:60000,
-                 incomes:[{ id:uid(), date:start, amount:900000, note:'sueldo' }] }];
-  s.items = [
-    {id:1, date:start, amount:3100,  cat:'diario',     note:'donas para la merienda'},
-    {id:2, date:start, amount:5000,  cat:'transporte', note:'subte'},
-    {id:3, date:start, amount:38000, cat:'unico',      note:'funda y vidrio del celular'}
-  ];
-  return s;
+  return blankState();
 }
 
 function block(schema, where){
@@ -710,6 +786,12 @@ function dailyInfo(){
   const calc = periodCalc(p);
   if(blocked) return { daily:0, ready:false, manual:false, p:null, calc:null,
     why:'Datos de una versión más nueva.' };
+  /* Todavía no eligió cómo usar la app: el diario no se inventa. Atrás del
+     popup se ve un "—" y no un monto que el usuario nunca puso. */
+  if(estreno && !state.setup) return { daily:0, ready:false, manual:false, p:null, calc:null };
+  /* Sin límite: no hay sobre diario, así que no hay número que calcular ni día
+     que cerrar. `p:null` apaga solo la semana y el sobrante del período. */
+  if(state.dailyMode === 'none') return { daily:0, ready:false, none:true, manual:false, p:null, calc:null };
   if(state.dailyMode === 'manual') return { daily:state.daily, ready:true, manual:true, p, calc };
   if(!p) return { daily:0, ready:false, manual:false, p, calc, why:'Todavía no cargaste de qué cobro a qué cobro.' };
   if(calc.finished) return { daily:0, ready:false, manual:false, p, calc, why:`Se terminó el tramo el ${dm(p.end)}.` };
@@ -768,6 +850,10 @@ function weekDays(){
     return { iso:d.toISOString().slice(0,10), dow:DAYS[d.getDay()], n:d.getDate() }; });
 }
 const spentOn = iso => state.items.filter(x=>x.date===iso && x.cat==='diario').reduce((s,x)=>s+x.amount,0);
+/* Sin límite no hay tres bolsillos: no hay sobre del que salga lo del día ni
+   presupuesto de transporte aparte, así que "cuánto llevás gastado hoy" es todo
+   lo anotado hoy. Las categorías siguen sirviendo para los totales del mes. */
+const totalOn = iso => state.items.filter(x=>x.date===iso).reduce((s,x)=>s+x.amount,0);
 
 /* ---------- las dos vistas ----------
    Hoy es lo que se usa todos los días: el número, el formulario y lo anotado
@@ -800,11 +886,14 @@ function render(){
   renderForm();
   renderUndo();
   renderImport();
+  renderNudge();
 
   document.getElementById('cfgMode').value = state.dailyMode;
   document.getElementById('cfgDaily').value = state.daily;
   document.getElementById('cfgDaily').disabled = blocked || state.dailyMode !== 'manual';
   document.getElementById('cfgStart').value = state.weekStart;
+  /* Sin límite no hay tramos ni ingresos: no se piden ni se muestran. */
+  document.getElementById('boxPeriod').hidden = !!info.none;
   renderPeriod();
 }
 
@@ -815,7 +904,19 @@ function renderToday(info){
   const daily = info.daily, spent = spentOn(today), left = daily - spent;
   const el = document.getElementById('todayLeft');
   const bar = document.getElementById('todayBar');
+  const caret = document.getElementById('todayCaret');
   document.getElementById('dailyBadge').hidden = !info.manual;
+  document.getElementById('todayLabel').textContent = info.none ? 'Gastaste hoy' : 'Queda hoy';
+  /* Sin límite no hay cuenta que abrir: el número es la suma de lo anotado. */
+  caret.hidden = !!info.none;
+  if(info.none){
+    const todo = totalOn(today);
+    el.textContent = fmt(todo);
+    el.className = 'big num ' + (todo ? 'plain' : 'idle');
+    bar.hidden = true;
+    document.getElementById('todayNote').textContent = '';
+    return;
+  }
 
   if(!info.ready && !spent){
     el.textContent = '—';
@@ -830,13 +931,14 @@ function renderToday(info){
       (daily ? Math.min(100, spent/daily*100) : 0) + '%';
   }
   document.getElementById('todayNote').textContent = info.ready ? '' : (info.why || '');
-  document.getElementById('todayCaret').textContent = (whyOpen ? '▴' : '▾') + ' la cuenta';
+  caret.textContent = (whyOpen ? '▴' : '▾') + ' la cuenta';
 }
 
 /* La cuenta que produce el número, sólo cuando se toca. Cada término, hasta lo
    que queda hoy: el número tiene que poder auditarse desde la app. */
 function renderWhy(info){
   const panel = document.getElementById('why');
+  if(info.none) whyOpen = false;
   document.getElementById('todayBtn').setAttribute('aria-expanded', String(whyOpen));
   panel.hidden = !whyOpen;
   if(!whyOpen) return;
@@ -868,6 +970,9 @@ function renderWhy(info){
 }
 
 function renderWeek(info){
+  /* Sin límite no hay sobres que llenar: la tira no dice nada. */
+  document.getElementById('secWeek').hidden = !!info.none;
+  if(info.none) return;
   const today = todayISO(), daily = info.daily, days = weekDays();
   document.getElementById('strip').innerHTML = days.map(d=>{
     const s = spentOn(d.iso), pct = Math.min(100, daily ? s/daily*100 : 0);
@@ -968,9 +1073,6 @@ function renderForm(){
   document.getElementById('formTitle').textContent = editando ? 'Editando un gasto' : '';
   document.getElementById('add').textContent = editando ? 'Guardar cambios' : 'Anotar';
   document.getElementById('cancelEdit').hidden = !editando;
-  /* Editando ya hay dos botones y el link: el micrófono se corre. Importar en
-     medio de una edición no es algo que nadie quiera hacer. */
-  document.getElementById('impTxtBtn').hidden = editando;
   document.querySelectorAll('.cat').forEach(b=>b.classList.toggle('on', b.dataset.cat === catSel));
 }
 
@@ -1140,13 +1242,17 @@ document.getElementById('note').addEventListener('keydown',e=>{ if(e.key==='Ente
 
 /* La única explicación de dónde sale el número aparece al tocarlo. */
 document.getElementById('todayBtn').onclick = () => {
-  whyOpen = !whyOpen;
   const info = dailyInfo();
+  if(info.none) return;      /* no hay cuenta detrás del número */
+  whyOpen = !whyOpen;
   renderToday(info); renderWhy(info);
 };
 
 /* ---------- ajustes ---------- */
-document.getElementById('cfgMode').onchange = e => { state.dailyMode = e.target.value==='auto'?'auto':'manual'; save(); render(); };
+document.getElementById('cfgMode').onchange = e => {
+  state.dailyMode = ['auto','none'].includes(e.target.value) ? e.target.value : 'manual';
+  save(); render();
+};
 document.getElementById('cfgDaily').onchange = e => { state.daily = Math.max(0,int(e.target.value)); save(); render(); };
 document.getElementById('cfgStart').onchange = e => { state.weekStart = Number(e.target.value); save(); render(); };
 
@@ -1188,12 +1294,16 @@ function download(name, content, type){
   const url = URL.createObjectURL(new Blob([content],{type}));
   const a = document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
 }
-document.getElementById('expCsv').onclick = () => {
+/* El BOM va con una sola barra: con la barra duplicada el archivo arrancaba
+   con esas seis letras impresas dentro de la primera celda, en vez de con la
+   marca que hace que Excel lea bien los acentos. */
+function bajarCsv(){
   const rows = [['fecha','categoria','monto','detalle'],
     ...[...state.items].sort((a,b)=>a.date.localeCompare(b.date))
       .map(x=>[x.date,x.cat,x.amount,(x.note||'').replace(/"/g,'""')])];
-  download('gastos.csv', '\\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n'), 'text/csv');
-};
+  download('gastos.csv', '\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n'), 'text/csv');
+}
+document.getElementById('expCsv').onclick = bajarCsv;
 document.getElementById('expJson').onclick = () => download('sobres-respaldo.json', JSON.stringify(state), 'application/json');
 document.getElementById('impBtn').onclick = () => document.getElementById('impFile').click();
 document.getElementById('impFile').onchange = e => {
@@ -1208,6 +1318,79 @@ document.getElementById('impFile').onchange = e => {
   };
   r.readAsText(f);
 };
+/* ---------- el aviso de exportar, al mes ----------
+   Al mes del primer gasto anotado, y después una vez por mes. Es un aviso en la
+   pantalla, nunca un popup: anotar un gasto sigue siendo lo primero que se
+   puede hacer al abrir la app. Ocultarlo lo corre un mes, no lo apaga: lo que
+   se guarda es la fecha en que se ocultó, y de ahí se cuenta el mes siguiente. */
+
+const PROMPT_IA = `Te paso un CSV con mis gastos personales de un mes. Las columnas son: fecha,
+categoría, monto y detalle. Los montos están en pesos argentinos.
+
+Quiero que me ayudes a entender en qué se me va la plata. Concretamente:
+
+1. Cuánto gasté en total y cuál fue el promedio por día.
+2. En qué categoría se fue más plata, y dentro de la categoría más grande, qué
+   tipo de gasto la explica. Mirá los detalles, no solo los montos.
+3. Si hay gastos chicos y repetidos que sumados pesen más de lo que parecen.
+   Suelen ser los que uno no registra como importantes.
+4. Cómo vienen las semanas entre sí: si gasto parejo o hay días que se disparan.
+5. Dos o tres cambios concretos para el mes que viene, con el número de cuánto me
+   ahorraría cada uno. Concretos: no "gastar menos en X", sino "bajar X de tanto
+   a tanto son tantos pesos por mes".
+
+Sé directo. Si algo de lo que ves no tiene arreglo fácil o no vale la pena tocarlo,
+decímelo también. No hace falta que me felicites por registrar los gastos.`;
+
+/* El mes se cuenta desde el primer gasto, o desde la última vez que se ocultó
+   el aviso si es posterior. Sin gastos no hay nada para analizar. */
+function avisoExportar(){
+  if(blocked || !state.items.length) return null;
+  const primero = state.items.map(x=>x.date).sort()[0];
+  const desde = (state.nudged && state.nudged > primero) ? state.nudged : primero;
+  const cuando = addMonths(desde, 1);
+  if(todayISO() < cuando) return null;
+  return { primero, meses: Math.max(1, Math.floor(daysBetween(primero, todayISO()) / 30)) };
+}
+
+function renderNudge(){
+  const box = document.getElementById('nudge');
+  const a = avisoExportar();
+  box.hidden = !a;
+  if(!a) return;
+  document.getElementById('nudgeTitle').textContent = a.meses === 1
+    ? 'Ya tenés un mes de gastos anotados.'
+    : `Ya tenés ${a.meses} meses de gastos anotados.`;
+}
+
+document.getElementById('nudgeCsv').onclick = bajarCsv;
+document.getElementById('nudgeClose').onclick = () => {
+  state.nudged = todayISO();
+  save(); render();
+};
+document.getElementById('nudgeCopy').onclick = async () => {
+  const b = document.getElementById('nudgeCopy');
+  let ok = false;
+  try{
+    await navigator.clipboard.writeText(PROMPT_IA);
+    ok = true;
+  }catch(e){
+    /* Safari viejo y contextos sin permiso: el textarea de toda la vida. */
+    try{
+      const t = document.createElement('textarea');
+      t.value = PROMPT_IA;
+      t.setAttribute('readonly','');
+      t.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(t);
+      t.select(); t.setSelectionRange(0, PROMPT_IA.length);
+      ok = document.execCommand('copy');
+      document.body.removeChild(t);
+    }catch(err){}
+  }
+  b.textContent = ok ? 'Copiado' : 'No se pudo copiar';
+  setTimeout(()=>{ b.textContent = 'Copiar el texto'; }, 2500);
+};
+
 document.getElementById('wipe').onclick = () => {
   if(!confirm('Se borran todos los gastos anotados. ¿Seguro?')) return;
   state = { ...state, deleted:[...(state.deleted||[]), ...state.items.map(x=>Number(x.id))], items:[], closed:[] };
@@ -1479,6 +1662,11 @@ function merge(remote){
     dailyMode: remoteNewer ? (remote.dailyMode ?? state.dailyMode) : state.dailyMode,
     weekStart: remoteNewer ? (remote.weekStart ?? state.weekStart) : state.weekStart,
     periods: remoteNewer ? (remote.periods ?? state.periods) : state.periods,
+    /* Estos dos no son configuración que se pisa: si de algún lado ya se eligió
+       cómo usar la app, se eligió, y el aviso de exportar se queda con la fecha
+       más nueva para no reaparecer en el dispositivo que ya lo ocultó. */
+    setup: !!(state.setup || remote.setup),
+    nudged: (state.nudged || '') > (remote.nudged || '') ? state.nudged : (remote.nudged || ''),
     deleted: [...deleted],
     updatedAt: Math.max(state.updatedAt||0, remote.updatedAt||0),
     items: [...byId.values()]
@@ -1572,6 +1760,55 @@ document.getElementById('syncOff').onclick = () => {
   document.getElementById('ghToken').value=''; document.getElementById('ghGist').value='';
   paint('', 'Desconectado. Los gastos siguen guardados acá.');
 };
+
+/* ---------- primer uso ----------
+   Aparece una sola vez, antes que cualquier otra cosa, y sólo en una instalación
+   nueva de verdad: sin datos guardados y sin Gist configurado. Al confirmar
+   queda `setup:true` y no vuelve nunca más, ni siquiera si después se borra
+   todo. Las tres opciones son las tres formas de contestar "cuánto puedo gastar
+   hoy": ninguna, una que fija el usuario, o una que sale del sueldo. */
+const DIAS_MES = 30;      /* el sueldo se divide por 30, no por el mes calendario */
+let onbSel = 'none';
+
+const onb = document.getElementById('onb');
+const onbDaily = document.getElementById('onbDaily');
+const onbSalary = document.getElementById('onbSalary');
+
+function renderOnb(){
+  document.querySelectorAll('.onb-opt').forEach(b=>b.classList.toggle('on', b.dataset.onb === onbSel));
+  document.getElementById('onbFijo').hidden = onbSel !== 'fijo';
+  document.getElementById('onbSueldo').hidden = onbSel !== 'sueldo';
+  /* El número que le va a quedar, antes de confirmar: nadie elige a ciegas. */
+  const s = Math.max(0, int(onbSalary.value));
+  document.getElementById('onbCalc').innerHTML = s
+    ? `Te quedan <b>${esc(fmt(Math.floor(s/DIAS_MES)))}</b> por día.`
+    : 'Escribí cuánto cobrás y te digo cuánto te queda por día.';
+}
+
+document.querySelectorAll('.onb-opt').forEach(b=>b.onclick=()=>{ onbSel = b.dataset.onb; renderOnb(); });
+/* Nada de .focus() al elegir una opción: en iOS no levanta el teclado y deja el
+   campo activo de mentira. Ver CLAUDE.md. */
+onbSalary.addEventListener('input', renderOnb);
+
+document.getElementById('onbOk').onclick = () => {
+  if(onbSel === 'fijo'){
+    const d = Math.max(0, int(onbDaily.value));
+    if(!d) return;                       /* sin monto no hay nada que fijar */
+    state.daily = d; state.dailyMode = 'manual';
+  }else if(onbSel === 'sueldo'){
+    const s = Math.max(0, int(onbSalary.value));
+    if(!s) return;
+    state.daily = Math.floor(s/DIAS_MES); state.dailyMode = 'manual';
+  }else{
+    state.dailyMode = 'none';
+  }
+  state.setup = true;
+  onb.hidden = true;
+  save();
+  render();
+};
+
+if(estreno && !state.setup && !blocked){ onb.hidden = false; renderOnb(); }
 
 const cerroAlgo = closeDays();
 render();
