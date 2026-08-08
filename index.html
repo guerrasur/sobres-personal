@@ -243,6 +243,11 @@ h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
 .tot .v{font-family:var(--mono);font-size:21px;font-weight:700;margin-top:5px}
 .tot.violet .v{color:var(--violet)} .tot.teal .v{color:var(--teal)} .tot.ochre .v{color:var(--ochre)}
 
+/* importar lo dictado: qué va a entrar, antes de confirmar */
+.imp-head{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin:16px 0 2px}
+.imp-bad{font-family:var(--mono);font-size:11px;color:var(--ochre);padding:3px 0;overflow-wrap:anywhere}
+.imp-fmt{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:14px}
+
 /* ajustes */
 details{margin-top:34px;border-top:1px solid var(--line);padding-top:16px}
 summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-soft);letter-spacing:.04em}
@@ -275,7 +280,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v2.0.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v2.1.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -421,8 +426,12 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <button class="ghost mini" id="expJson">Guardar respaldo</button>
       <button class="ghost mini" id="impBtn">Cargar respaldo</button>
       <input type="file" id="impFile" accept=".json" hidden>
+      <button class="ghost mini" id="impTxtBtn">Importar por voz</button>
+      <input type="file" id="impTxtFile" accept=".txt,text/plain" hidden>
       <button class="ghost mini" id="wipe">Borrar todo</button>
     </div>
+
+    <div class="box" id="importBox" hidden></div>
     <footer>
       Un sobre por día. Cuando se vacía, se vació.<br>
       Sin sincronizar, los datos quedan solo en este navegador y no necesitan internet. Si limpiás los datos del navegador, se pierden.
@@ -622,7 +631,7 @@ function block(schema, where){
     + (where==='gist'
         ? 'No se tocó nada y se pausó la sincronización para no pisarlos. Actualizá Sobres en este dispositivo (recargá con la app cerrada) y volvé a entrar.'
         : 'No se tocó nada. Actualizá Sobres en este dispositivo (recargá con la app cerrada) y volvé a entrar.');
-  document.querySelectorAll('#add,.cat,#otroDia,#incAdd,#pNew,#pDel,#wipe,#impBtn,#syncNow,#cfgMode,#cfgDaily,#cfgStart,#pStart,#pEnd,#pTransport,#pSel')
+  document.querySelectorAll('#add,.cat,#otroDia,#incAdd,#pNew,#pDel,#wipe,#impBtn,#impTxtBtn,#syncNow,#cfgMode,#cfgDaily,#cfgStart,#pStart,#pEnd,#pTransport,#pSel')
     .forEach(el => el.disabled = true);
 }
 
@@ -761,6 +770,7 @@ function render(){
   renderLists(today);
   renderForm();
   renderUndo();
+  renderImport();
 
   document.getElementById('cfgMode').value = state.dailyMode;
   document.getElementById('cfgDaily').value = state.daily;
@@ -1169,6 +1179,155 @@ document.getElementById('wipe').onclick = () => {
   if(!confirm('Se borran todos los gastos anotados. ¿Seguro?')) return;
   state = { ...state, deleted:[...(state.deleted||[]), ...state.items.map(x=>Number(x.id))], items:[], closed:[] };
   save(); render();
+};
+
+/* ---------- importar lo que se dictó por voz ----------
+   Un atajo de iOS escribe una línea por gasto en un .txt:
+
+       2026-08-08T17:42:11 | 3200 | café
+
+   El atajo sólo agrega al final y nunca limpia el archivo, así que cada
+   importación trae de nuevo todo el historial. La marca de tiempo **es** el
+   identificador: se convierte en el `id` del gasto y con eso lo repetido se
+   saltea solo, sin guardar aparte una lista de lo ya importado — que sería un
+   campo nuevo en el estado, un schema más y una segunda fuente de verdad.
+   Un gasto importado y después borrado tampoco revive: la lápida de `deleted`
+   lo sigue tapando.
+
+   Entran como `diario`, que es la mayoría de lo que se dicta. Después se
+   editan como cualquier otro gasto: son gastos normales, se sincronizan igual. */
+
+const TS_RE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+/* La marca de tiempo, a número. Se arma en UTC a propósito: el mismo archivo
+   tiene que dar el mismo id en el celular y en la computadora, esté donde esté
+   el huso horario. La fecha del gasto sale de los dígitos, sin conversión. */
+function marca(s){
+  const m = TS_RE.exec(String(s).trim());
+  if(!m) return null;
+  const [ ,y,mo,d,h,mi,se] = m;
+  const t = Date.UTC(+y, +mo-1, +d, +h, +mi, +(se||0));
+  if(!Number.isFinite(t)) return null;
+  /* 2026-13-45T99:99 pasa la regex y no es una fecha */
+  if(new Date(t).toISOString().slice(0,10) !== `${y}-${mo}-${d}`) return null;
+  if(+h > 23 || +mi > 59 || +(se||0) > 59) return null;
+  return { id:t, date:`${y}-${mo}-${d}` };
+}
+
+/* "3200", "3.200", "$ 3.200,50": el atajo escribe lo que se dictó. Un separador
+   vale como decimal sólo si le quedan una o dos cifras atrás; si no, es de miles.
+   El menos no se ignora: un gasto negativo es una línea que salió mal, y
+   limpiarle el signo la haría entrar como si estuviera bien. */
+function monto(s){
+  if(String(s).includes('-')) return null;
+  let t = String(s).replace(/[^\d.,]/g, '');
+  if(!/\d/.test(t)) return null;
+  const dec = Math.max(t.lastIndexOf(','), t.lastIndexOf('.'));
+  const cola = dec > -1 ? t.length - dec - 1 : -1;
+  t = (cola === 1 || cola === 2)
+    ? t.slice(0,dec).replace(/[.,]/g,'') + '.' + t.slice(dec+1)
+    : t.replace(/[.,]/g,'');
+  const n = Math.round(Number(t));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/* Una línea mal formada se saltea y se informa cuál: nunca aborta el resto. */
+function leerDictado(texto){
+  const nuevos = [], malas = [];
+  let repes = 0;
+  const vistos = new Set([
+    ...state.items.map(x => String(x.id)),
+    ...(state.deleted||[]).map(d => String(Number(d)))
+  ]);
+  String(texto).split(/\r?\n/).forEach((linea, i) => {
+    const cruda = linea.trim();
+    if(!cruda) return;
+    const campos = cruda.split('|').map(c => c.trim());
+    const t = campos.length >= 2 ? marca(campos[0]) : null;
+    const a = campos.length >= 2 ? monto(campos[1]) : null;
+    if(!t || !a){ malas.push({ n:i+1, cruda }); return; }
+    if(vistos.has(String(t.id))){ repes++; return; }
+    vistos.add(String(t.id));
+    nuevos.push({ id:t.id, date:t.date, amount:a, cat:'diario',
+                  note:campos.slice(2).join(' | ').trim(), updatedAt:t.id });
+  });
+  return { nuevos, malas, repes };
+}
+
+/* Nada entra sin que el usuario vea qué entra y pueda cancelar. */
+let imp = null;
+
+function renderImport(){
+  const box = document.getElementById('importBox');
+  box.hidden = !imp;
+  if(!imp) return;
+
+  if(imp.hechos != null){
+    box.innerHTML = `<div class="box-head"><span class="eyebrow">Importar por voz</span></div>
+      <p class="box-copy">Listo: ${imp.hechos} ${imp.hechos===1?'gasto anotado':'gastos anotados'}.</p>
+      <div class="tools"><button class="ghost mini" id="impClose">Cerrar</button></div>`;
+    document.getElementById('impClose').onclick = () => { imp = null; renderImport(); };
+    return;
+  }
+
+  const { nuevos, malas, repes } = imp;
+  const ya = repes ? ` ${repes} ${repes===1?'ya estaba':'ya estaban'} de antes.` : '';
+  const partes = [
+    `<div class="box-head"><span class="eyebrow">Importar por voz</span></div>`,
+    `<p class="box-copy">${nuevos.length
+        ? (nuevos.length === 1
+            ? `Entra 1 gasto nuevo, como “Del día”.${ya}`
+            : `Entran ${nuevos.length} gastos nuevos, todos como “Del día”.${ya}`)
+        : `No hay nada nuevo para importar.${ya}`}</p>`
+  ];
+
+  if(nuevos.length){
+    partes.push([...nuevos].sort((a,b)=>a.id-b.id).map(x=>`
+      <div class="item">
+        <span class="tag diario">${CAT.diario}</span>
+        <span class="desc">${esc(x.note||'—')}</span>
+        <span class="when">${dm(x.date)}</span>
+        <span class="amt">${fmt(x.amount)}</span>
+      </div>`).join(''));
+  }
+
+  if(malas.length){
+    partes.push(`<div class="imp-head">${malas.length===1?'Una línea no se entendió':`${malas.length} líneas no se entendieron`}</div>`);
+    partes.push(malas.map(m=>`<div class="imp-bad">línea ${m.n}: ${esc(m.cruda)}</div>`).join(''));
+  }
+
+  partes.push(`<div class="tools">
+    ${nuevos.length ? `<button class="mini" id="impOk">Importar ${nuevos.length}</button>` : ''}
+    <button class="ghost mini" id="impCancel">${nuevos.length ? 'Cancelar' : 'Cerrar'}</button>
+  </div>`);
+  partes.push(`<div class="imp-fmt">una línea por gasto: fecha y hora | monto | detalle</div>`);
+
+  box.innerHTML = partes.join('');
+  document.getElementById('impCancel').onclick = () => { imp = null; renderImport(); };
+  const ok = document.getElementById('impOk');
+  if(ok){
+    ok.disabled = blocked;
+    ok.onclick = () => {
+      if(blocked || !imp || !imp.nuevos.length) return;
+      imp.nuevos.forEach(x => { state.items.push(x); markPending(x.id); });
+      imp = { hechos: imp.nuevos.length };
+      save();
+      render();
+    };
+  }
+}
+
+document.getElementById('impTxtBtn').onclick = () => document.getElementById('impTxtFile').click();
+document.getElementById('impTxtFile').onchange = e => {
+  const f = e.target.files[0];
+  /* El archivo es siempre el mismo y crece: sin esto, elegirlo dos veces
+     seguidas no vuelve a disparar el onchange. */
+  e.target.value = '';
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = () => { imp = leerDictado(r.result); renderImport(); };
+  r.onerror = () => { imp = null; renderImport(); alert('El archivo no se pudo leer.'); };
+  r.readAsText(f);
 };
 
 /* ---------- sincronización con un Gist privado ---------- */
