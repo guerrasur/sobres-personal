@@ -202,33 +202,43 @@ button.mini{font-size:12px;padding:5px 10px}
 .nudge .tools{margin-top:12px}
 
 /* primer uso: aparece una sola vez, cuando no hay nada guardado ni un Gist
-   configurado. Una línea por opción y confirmar; lo demás es Ajustes. */
+   configurado. Un solo campo grande y las alternativas chicas abajo: se abre,
+   se escribe un número, se toca Empezar y no se leyó nada. */
 .onb{
   position:fixed;inset:0;z-index:20;overflow:auto;
   display:flex;align-items:center;justify-content:center;padding:20px;
   background:rgba(34,28,51,.55);
 }
 .onb[hidden]{display:none}
-.onb-card{width:100%;max-width:420px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
-.onb-card h2{font-size:19px}
-.onb-copy{font-size:13px;color:var(--ink-soft);margin:7px 0 0}
-.onb-opts{display:grid;gap:8px;margin-top:16px}
-.onb-opt{
-  display:block;width:100%;text-align:left;padding:12px 14px;
-  background:#fff;color:var(--ink);border:1px solid var(--line);
-  font-weight:400;touch-action:manipulation;
+.onb-card{width:100%;max-width:380px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:22px 20px;text-align:center}
+.onb-card h2{font-size:17px;font-weight:700}
+/* el campo es lo primero que se ve: mono y grande como el número de la app,
+   apenas más chico que el de la pantalla principal */
+.onb-num{
+  font-family:var(--mono);font-weight:700;font-size:38px;letter-spacing:-.02em;
+  text-align:center;padding:12px 10px;margin-top:16px;
+  -moz-appearance:textfield;
 }
-.onb-opt b{display:block;font-weight:700;font-size:15px}
-.onb-opt span{display:block;font-size:12px;color:var(--ink-soft);margin-top:2px}
-.onb-opt:hover{border-color:var(--ink-soft);opacity:1}
-.onb-opt.on{border-color:var(--violet);box-shadow:0 0 0 1px var(--violet) inset}
-.onb-opt.on b{color:var(--violet)}
-.onb-field{margin-top:14px}
-.onb-field[hidden]{display:none}
-.onb-calc{font-size:13px;color:var(--ink-soft);margin-top:8px}
-.onb-calc b{font-family:var(--mono);color:var(--ink)}
-#onbOk{width:100%;margin-top:16px;padding:13px 18px;font-size:15px}
-.onb-foot{font-size:12px;color:var(--ink-soft);margin:10px 0 0;text-align:center}
+/* las flechitas de type=number empujan el número fuera del centro. En iOS no
+   existen; en la computadora sí, y acá el campo va centrado. */
+.onb-num::-webkit-outer-spin-button,
+.onb-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.onb-num:disabled{opacity:.55}
+/* la línea que dice qué se está pidiendo, y en modo sueldo lo que queda por día */
+.onb-what{font-size:12px;color:var(--ink-soft);margin-top:10px;min-height:1.5em}
+.onb-what b{font-family:var(--mono);font-weight:700;color:var(--ink)}
+/* las alternativas: chicas y sin caja. La seleccionada se marca sola. */
+.onb-alts{display:flex;justify-content:center;gap:20px;margin-top:20px}
+.onb-alt{
+  background:none;border:none;padding:6px 2px;
+  font-size:13px;font-weight:600;color:var(--ink-soft);
+  text-decoration:underline;text-underline-offset:3px;
+  touch-action:manipulation;
+}
+.onb-alt:hover{color:var(--violet);opacity:1}
+.onb-alt.on{color:var(--violet);text-decoration:none}
+.onb-alt.on::before{content:'✓ '}
+#onbOk{width:100%;margin-top:20px;padding:13px 18px;font-size:15px}
 
 /* listas */
 section{margin-top:34px}
@@ -328,7 +338,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v3.0.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v3.1.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -513,30 +523,15 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <!-- Primer uso: una sola vez, cuando no hay nada guardado ni un Gist configurado. -->
 <div class="onb" id="onb" hidden>
   <div class="onb-card" role="dialog" aria-modal="true" aria-labelledby="onbTitle">
-    <h2 id="onbTitle">¿Cómo querés usar Sobres?</h2>
-    <p class="onb-copy">Se anotan gastos igual en los tres casos.</p>
-    <div class="onb-opts">
-      <button class="onb-opt on" data-onb="none">
-        <b>Sin límite</b><span>Anotar y ver cuánto llevás gastado.</span>
-      </button>
-      <button class="onb-opt" data-onb="fijo">
-        <b>Un monto por día</b><span>Vos decís cuánto y la app te lo descuenta.</span>
-      </button>
-      <button class="onb-opt" data-onb="sueldo">
-        <b>Calculado del sueldo</b><span>Lo que cobrás por mes, dividido 30.</span>
-      </button>
-    </div>
-    <div class="onb-field" id="onbFijo" hidden>
-      <label for="onbDaily">Cuánto por día</label>
-      <input class="num-in" id="onbDaily" type="number" inputmode="numeric" placeholder="0">
-    </div>
-    <div class="onb-field" id="onbSueldo" hidden>
-      <label for="onbSalary">Cuánto cobrás por mes</label>
-      <input class="num-in" id="onbSalary" type="number" inputmode="numeric" placeholder="0">
-      <div class="onb-calc" id="onbCalc"></div>
+    <h2 id="onbTitle">¿Cuánto podés gastar?</h2>
+    <input class="onb-num" id="onbAmount" type="number" inputmode="numeric" placeholder="0"
+           aria-labelledby="onbTitle onbWhat">
+    <div class="onb-what" id="onbWhat"></div>
+    <div class="onb-alts">
+      <button class="onb-alt" id="onbNone" data-onb="none" aria-pressed="false">Sin límite</button>
+      <button class="onb-alt" id="onbSueldo" data-onb="sueldo" aria-pressed="false">Sueldo mensual</button>
     </div>
     <button id="onbOk">Empezar</button>
-    <p class="onb-foot">Se cambia después en Ajustes.</p>
   </div>
 </div>
 
@@ -1765,42 +1760,63 @@ document.getElementById('syncOff').onclick = () => {
    Aparece una sola vez, antes que cualquier otra cosa, y sólo en una instalación
    nueva de verdad: sin datos guardados y sin Gist configurado. Al confirmar
    queda `setup:true` y no vuelve nunca más, ni siquiera si después se borra
-   todo. Las tres opciones son las tres formas de contestar "cuánto puedo gastar
-   hoy": ninguna, una que fija el usuario, o una que sale del sueldo. */
+   todo.
+
+   Es **un solo campo que cambia de rol**, no tres opciones que abren pantallas.
+   Arranca pidiendo el límite diario, que es lo que quiere la mayoría; las dos
+   alternativas van abajo, chicas, y funcionan como interruptores: tocar la que
+   está marcada vuelve al límite diario sin cerrar el popup. La línea de abajo
+   dice siempre qué se está pidiendo, y en modo sueldo muestra lo que va a
+   quedar por día mientras se escribe. */
 const DIAS_MES = 30;      /* el sueldo se divide por 30, no por el mes calendario */
-let onbSel = 'none';
+let onbSel = 'fijo';      /* 'fijo' | 'sueldo' | 'none' */
 
 const onb = document.getElementById('onb');
-const onbDaily = document.getElementById('onbDaily');
-const onbSalary = document.getElementById('onbSalary');
+const onbAmount = document.getElementById('onbAmount');
+const onbWhat = document.getElementById('onbWhat');
 
 function renderOnb(){
-  document.querySelectorAll('.onb-opt').forEach(b=>b.classList.toggle('on', b.dataset.onb === onbSel));
-  document.getElementById('onbFijo').hidden = onbSel !== 'fijo';
-  document.getElementById('onbSueldo').hidden = onbSel !== 'sueldo';
-  /* El número que le va a quedar, antes de confirmar: nadie elige a ciegas. */
-  const s = Math.max(0, int(onbSalary.value));
-  document.getElementById('onbCalc').innerHTML = s
-    ? `Te quedan <b>${esc(fmt(Math.floor(s/DIAS_MES)))}</b> por día.`
-    : 'Escribí cuánto cobrás y te digo cuánto te queda por día.';
+  document.querySelectorAll('.onb-alt').forEach(b=>{
+    const on = b.dataset.onb === onbSel;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  /* Sin límite no hay número que pedir. Se desactiva en vez de esconderse: así
+     no salta el alto de la tarjeta y se ve que el campo sigue estando. */
+  onbAmount.disabled = onbSel === 'none';
+  const v = Math.max(0, int(onbAmount.value));
+  onbWhat.innerHTML =
+    onbSel === 'none'   ? 'sin límite diario'
+  : onbSel === 'sueldo' ? (v ? `sueldo mensual · <b>${esc(fmt(Math.floor(v/DIAS_MES)))}</b> por día`
+                             : 'sueldo mensual')
+  : 'límite diario';
 }
 
-document.querySelectorAll('.onb-opt').forEach(b=>b.onclick=()=>{ onbSel = b.dataset.onb; renderOnb(); });
-/* Nada de .focus() al elegir una opción: en iOS no levanta el teclado y deja el
-   campo activo de mentira. Ver CLAUDE.md. */
-onbSalary.addEventListener('input', renderOnb);
+/* El foco sólo donde levanta el teclado de verdad. En iOS el foco programático
+   deja el campo "activo" de mentira y sin teclado, que es la trampa de siempre
+   (ver CLAUDE.md); en una pantalla con mouse es justo lo que se quiere. */
+const punteroFino = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+function enfocarOnb(){ if(!onbAmount.disabled && punteroFino()) onbAmount.focus(); }
+
+document.querySelectorAll('.onb-alt').forEach(b=>b.onclick=()=>{
+  /* interruptor: la alternativa marcada se destilda y vuelve el límite diario */
+  onbSel = (onbSel === b.dataset.onb) ? 'fijo' : b.dataset.onb;
+  /* el campo cambia de rol: lo escrito antes querría decir otra cosa */
+  onbAmount.value = '';
+  renderOnb();
+  enfocarOnb();
+});
+onbAmount.addEventListener('input', renderOnb);
+onbAmount.addEventListener('keydown', e=>{ if(e.key === 'Enter') document.getElementById('onbOk').click(); });
 
 document.getElementById('onbOk').onclick = () => {
-  if(onbSel === 'fijo'){
-    const d = Math.max(0, int(onbDaily.value));
-    if(!d) return;                       /* sin monto no hay nada que fijar */
-    state.daily = d; state.dailyMode = 'manual';
-  }else if(onbSel === 'sueldo'){
-    const s = Math.max(0, int(onbSalary.value));
-    if(!s) return;
-    state.daily = Math.floor(s/DIAS_MES); state.dailyMode = 'manual';
-  }else{
+  const v = Math.max(0, int(onbAmount.value));
+  if(onbSel === 'none'){
     state.dailyMode = 'none';
+  }else{
+    if(!v) return;                       /* sin número no hay nada que fijar */
+    state.daily = onbSel === 'sueldo' ? Math.floor(v/DIAS_MES) : v;
+    state.dailyMode = 'manual';
   }
   state.setup = true;
   onb.hidden = true;
@@ -1808,7 +1824,7 @@ document.getElementById('onbOk').onclick = () => {
   render();
 };
 
-if(estreno && !state.setup && !blocked){ onb.hidden = false; renderOnb(); }
+if(estreno && !state.setup && !blocked){ onb.hidden = false; renderOnb(); enfocarOnb(); }
 
 const cerroAlgo = closeDays();
 render();

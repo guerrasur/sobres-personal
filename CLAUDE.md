@@ -119,11 +119,29 @@ desde Ajustes se pasa a cualquiera de los otros dos modos sin perder un gasto.
 
 ## El primer uso
 
-Al abrir la app por primera vez, un popup pregunta cómo se la va a usar: sin límite, un
-monto por día escrito a mano, o calculado del sueldo **dividido 30** — ese número se
-muestra en el popup antes de confirmar, porque nadie elige a ciegas. Las tres opciones son
-las tres formas de contestar "cuánto puedo gastar hoy", y las dos últimas terminan en
-`dailyMode:'manual'`: la diferencia está en quién hace la división.
+Al abrir la app por primera vez, un popup pregunta cuánto se puede gastar. Es **un solo
+campo grande que cambia de rol**, no tres opciones que abren pantallas: arriba el campo,
+abajo una línea corta que dice qué se está pidiendo, más abajo las dos alternativas —
+"Sin límite" y "Sueldo mensual", chicas y sin caja — y Empezar. Alguien tiene que poder
+abrirlo, escribir un número, tocar Empezar y no haber leído nada.
+
+El campo arranca pidiendo el **límite diario**, que es lo que quiere la mayoría. Con
+"Sueldo mensual" pasa a pedir el sueldo y la línea de abajo muestra el resultado
+**dividido 30** mientras se escribe, porque nadie elige a ciegas. Con "Sin límite" el
+campo se desactiva —no se esconde: así no salta el alto de la tarjeta—. Las dos
+alternativas son interruptores: tocar la que está marcada vuelve al límite diario sin
+cerrar el popup, que es el único camino de vuelta que hay. La selección se marca con color
+y un ✓, nunca con un borde de tarjeta.
+
+Las tres opciones son las tres formas de contestar "cuánto puedo gastar hoy", y las dos
+que piden un número terminan en `dailyMode:'manual'`: la diferencia está en quién hace la
+división. Cambiar de rol **limpia el campo**: lo que estaba escrito querría decir otra
+cosa.
+
+El popup es el único lugar de la app donde hay un `.focus()` programático, y va detrás de
+`(hover: hover) and (pointer: fine)`. En una pantalla con mouse es lo que se quiere; en
+iOS el foco sin gesto no levanta el teclado y deja el campo activo de mentira, que es la
+trampa de siempre. Agregar el foco sin esa guarda es reintroducirla.
 
 Aparece **una sola vez**: `estreno` pide que no haya nada en `localStorage` **ni** un Gist
 configurado —un dispositivo con token es el segundo aparato de alguien que ya usa la app,
@@ -364,7 +382,9 @@ toques y ejecutaba JS, pero al tocar un campo no subía el teclado. Lo que lo ar
   WebKit en standalone trata los campos como no editables si esto no está explícito.
 - `touch-action: manipulation` en los inputs.
 - Quitar el `.focus()` programático al tocar un sobre de la tira semanal. iOS acepta el
-  foco pero no levanta el teclado, y deja el campo "activo" de mentira.
+  foco pero no levanta el teclado, y deja el campo "activo" de mentira. La única
+  excepción es el campo del popup de primer uso, y sólo porque va detrás de
+  `(hover: hover) and (pointer: fine)`: en iOS ese `.focus()` no llega a correr.
 
 **`visibilitychange`, nunca `window.addEventListener('focus')`.** En standalone el evento
 `focus` de ventana se dispara de más, incluso cuando un input toma el foco. Eso arrancaba
