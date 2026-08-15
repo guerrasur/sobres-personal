@@ -338,7 +338,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v3.1.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v3.2.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -366,7 +366,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
   <div class="card" id="form">
     <div class="eyebrow form-title" id="formTitle"></div>
-    <input id="amount" class="num" type="number" inputmode="numeric" placeholder="0" aria-label="Cuánto gastaste">
+    <input id="amount" class="num" type="text" inputmode="numeric" placeholder="0" aria-label="Cuánto gastaste">
     <div class="cats">
       <button class="cat on" data-cat="diario">Del día</button>
       <button class="cat" data-cat="transporte">Transporte</button>
@@ -445,13 +445,13 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <div class="cfg">
         <div><label for="pStart">Desde</label><input id="pStart" type="date"></div>
         <div><label for="pEnd">Hasta</label><input id="pEnd" type="date"></div>
-        <div><label for="pTransport">Plata para transporte</label><input class="num-in" id="pTransport" type="number" inputmode="numeric"></div>
+        <div><label for="pTransport">Plata para transporte</label><input class="num-in" id="pTransport" type="text" inputmode="numeric"></div>
       </div>
 
       <div class="eyebrow" style="margin-top:20px">Lo que cobrás en este tramo</div>
       <div id="incList"></div>
       <div class="row" style="margin-top:12px">
-        <div class="f-amount"><label for="incAmount">Monto</label><input class="num-in" id="incAmount" type="number" inputmode="numeric" placeholder="0"></div>
+        <div class="f-amount"><label for="incAmount">Monto</label><input class="num-in" id="incAmount" type="text" inputmode="numeric" placeholder="0"></div>
         <div class="f-note"><label for="incNote">Qué fue</label><input id="incNote" type="text" placeholder="sueldo, changa, aguinaldo"></div>
         <div class="f-date"><label for="incDate">Fecha</label><input id="incDate" type="date"></div>
       </div>
@@ -468,7 +468,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
           <option value="auto">Calculado</option><option value="manual">Lo fijo yo</option><option value="none">Sin límite</option>
         </select>
       </div>
-      <div><label for="cfgDaily">Monto fijo</label><input class="num-in" id="cfgDaily" type="number" inputmode="numeric"></div>
+      <div><label for="cfgDaily">Monto fijo</label><input class="num-in" id="cfgDaily" type="text" inputmode="numeric"></div>
       <div><label for="cfgStart">Empieza la semana</label>
         <select id="cfgStart">
           <option value="1">Lunes</option><option value="0">Domingo</option>
@@ -524,7 +524,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="onb" id="onb" hidden>
   <div class="onb-card" role="dialog" aria-modal="true" aria-labelledby="onbTitle">
     <h2 id="onbTitle">¿Cuánto podés gastar?</h2>
-    <input class="onb-num" id="onbAmount" type="number" inputmode="numeric" placeholder="0"
+    <input class="onb-num" id="onbAmount" type="text" inputmode="numeric" placeholder="0"
            aria-labelledby="onbTitle onbWhat">
     <div class="onb-what" id="onbWhat"></div>
     <div class="onb-alts">
@@ -555,6 +555,16 @@ const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'
 const dm = iso => `${+iso.slice(8,10)}/${+iso.slice(5,7)}`;
 const uid = () => Date.now()*1000 + Math.floor(Math.random()*1000);
 const int = n => Math.round(Number(n)||0);
+/* Los inputs de monto muestran puntos de miles mientras se escribe (ver
+   milesInput más abajo); parseNum saca esos puntos antes de convertir a
+   número, porque Number("10.000") los leería como decimales. */
+const parseNum = v => Number(String(v).replace(/\D/g,'')) || 0;
+function milesInput(el){
+  el.addEventListener('input', () => {
+    const n = parseNum(el.value);
+    el.value = n ? plain(n) : '';
+  });
+}
 
 /* ---------- fechas ---------- */
 const dnum = iso => Date.UTC(+iso.slice(0,4), +iso.slice(5,7)-1, +iso.slice(8,10));
@@ -884,7 +894,7 @@ function render(){
   renderNudge();
 
   document.getElementById('cfgMode').value = state.dailyMode;
-  document.getElementById('cfgDaily').value = state.daily;
+  document.getElementById('cfgDaily').value = plain(state.daily);
   document.getElementById('cfgDaily').disabled = blocked || state.dailyMode !== 'manual';
   document.getElementById('cfgStart').value = state.weekStart;
   /* Sin límite no hay tramos ni ingresos: no se piden ni se muestran. */
@@ -1098,7 +1108,7 @@ function renderPeriod(){
   ['pStart','pEnd','pTransport','incAdd','pDel'].forEach(id=>document.getElementById(id).disabled = blocked);
   document.getElementById('pStart').value = p.start;
   document.getElementById('pEnd').value = p.end;
-  document.getElementById('pTransport').value = p.transport;
+  document.getElementById('pTransport').value = plain(p.transport);
   document.getElementById('incDate').value = document.getElementById('incDate').value || p.start;
 
   document.getElementById('incList').innerHTML = p.incomes.length
@@ -1134,8 +1144,9 @@ function mostrarFecha(on){
 otroDia.onclick = () => mostrarFecha(dateRow.hidden);
 
 document.getElementById('date').value = todayISO();
+milesInput(document.getElementById('amount'));
 document.getElementById('add').onclick = () => {
-  const a = Math.round(Number(document.getElementById('amount').value));
+  const a = parseNum(document.getElementById('amount').value);
   if(!a || a<=0){ document.getElementById('amount').focus(); return; }
   const campos = {
     date: (dateRow.hidden ? '' : document.getElementById('date').value) || todayISO(),
@@ -1174,7 +1185,7 @@ function editarItem(id){
   if(!it || blocked) return;
   editandoId = it.id;
   catSel = it.cat;
-  document.getElementById('amount').value = it.amount;
+  document.getElementById('amount').value = plain(it.amount);
   document.getElementById('note').value = it.note || '';
   document.getElementById('date').value = it.date;
   mostrarFecha(it.date !== todayISO());
@@ -1248,16 +1259,19 @@ document.getElementById('cfgMode').onchange = e => {
   state.dailyMode = ['auto','none'].includes(e.target.value) ? e.target.value : 'manual';
   save(); render();
 };
-document.getElementById('cfgDaily').onchange = e => { state.daily = Math.max(0,int(e.target.value)); save(); render(); };
+document.getElementById('cfgDaily').onchange = e => { state.daily = Math.max(0,parseNum(e.target.value)); save(); render(); };
 document.getElementById('cfgStart').onchange = e => { state.weekStart = Number(e.target.value); save(); render(); };
+milesInput(document.getElementById('cfgDaily'));
 
 const withPeriod = fn => { const p = state.periods.find(x=>x.id===editId); if(p){ fn(p); save(); render(); } };
 document.getElementById('pSel').onchange = e => { editId = state.periods.find(p=>String(p.id)===e.target.value)?.id ?? editId; render(); };
 document.getElementById('pStart').onchange = e => withPeriod(p=>{ if(e.target.value) p.start = e.target.value; });
 document.getElementById('pEnd').onchange   = e => withPeriod(p=>{ if(e.target.value) p.end = e.target.value; });
-document.getElementById('pTransport').onchange = e => withPeriod(p=>{ p.transport = Math.max(0,int(e.target.value)); });
+document.getElementById('pTransport').onchange = e => withPeriod(p=>{ p.transport = Math.max(0,parseNum(e.target.value)); });
+milesInput(document.getElementById('pTransport'));
+milesInput(document.getElementById('incAmount'));
 document.getElementById('incAdd').onclick = () => {
-  const amount = int(document.getElementById('incAmount').value);
+  const amount = parseNum(document.getElementById('incAmount').value);
   if(!amount || amount<=0){ document.getElementById('incAmount').focus(); return; }
   withPeriod(p=>{
     p.incomes.push({ id:uid(), date:document.getElementById('incDate').value || p.start,
@@ -1784,7 +1798,7 @@ function renderOnb(){
   /* Sin límite no hay número que pedir. Se desactiva en vez de esconderse: así
      no salta el alto de la tarjeta y se ve que el campo sigue estando. */
   onbAmount.disabled = onbSel === 'none';
-  const v = Math.max(0, int(onbAmount.value));
+  const v = Math.max(0, parseNum(onbAmount.value));
   onbWhat.innerHTML =
     onbSel === 'none'   ? 'sin límite diario'
   : onbSel === 'sueldo' ? (v ? `sueldo mensual · <b>${esc(fmt(Math.floor(v/DIAS_MES)))}</b> por día`
@@ -1806,11 +1820,12 @@ document.querySelectorAll('.onb-alt').forEach(b=>b.onclick=()=>{
   renderOnb();
   enfocarOnb();
 });
+milesInput(onbAmount);
 onbAmount.addEventListener('input', renderOnb);
 onbAmount.addEventListener('keydown', e=>{ if(e.key === 'Enter') document.getElementById('onbOk').click(); });
 
 document.getElementById('onbOk').onclick = () => {
-  const v = Math.max(0, int(onbAmount.value));
+  const v = Math.max(0, parseNum(onbAmount.value));
   if(onbSel === 'none'){
     state.dailyMode = 'none';
   }else{
