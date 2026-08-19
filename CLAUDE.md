@@ -16,6 +16,11 @@ El monto diario sale de un **período**: un tramo con fecha de inicio, fecha de 
 o más ingresos ("cobré el 5, tengo que llegar al 5 del mes que viene"). Los ingresos son
 irregulares a propósito — algunos meses hay uno solo, otros hay tres de montos distintos.
 
+Hay dos formas de definir ese período, y son modos distintos de `dailyMode`. La de arriba
+es `'auto'`: tramos cargados a mano en Ajustes. La otra es `'sueldo'`, para el caso
+común de un sueldo fijo: el usuario dice cuánto cobra y **qué día del mes**, y los ciclos
+salen solos de ahí — ver "El modo sueldo" más abajo.
+
 ```
 sobre diario = (ingresos del período − transporte presupuestado − únicos ya hechos)
                ÷ días que faltan hasta el fin del período
@@ -93,11 +98,69 @@ dice el día, si sobró o se pasó, la diferencia y —en una segunda línea, en
 cortarse contra el ancho— cuánto se gastó de cuánto. Con eso alcanza; el párrafo que
 explicaba el mecanismo se fue.
 
-`dailyMode` puede ser `'auto'`, `'manual'` o `'none'`. En manual aparece la etiqueta ocre
+`dailyMode` puede ser `'auto'`, `'manual'`, `'sueldo'` o `'none'`. En manual aparece la etiqueta ocre
 "a mano" al lado de "Queda hoy": nunca hay que dejar ambiguo de dónde sale el monto, pero
 tampoco hay que tratarlo como un estado a medio configurar. Cuando no hay con qué calcular
 (sin período, período vencido, sin ingresos) el diario **no** se inventa: se muestra "—" y
 una línea corta de qué falta, de una oración, nunca instrucciones.
+
+## El modo sueldo: de cobro a cobro
+
+`dailyMode: 'sueldo'` es para quien cobra un sueldo fijo el mismo día de cada mes. **El
+"mes" de la app no es el del calendario**: va del día en que se cobra al día anterior al
+próximo cobro. El usuario dice el día (el 28) y el ciclo va del 28 de un mes al 28 del
+siguiente, que no cuenta — la misma regla de fin exclusivo que los tramos.
+
+**Los días los cuenta el calendario, nunca un 30 fijo.** Un ciclo puede tener 28, 29, 30 o
+31. Si alguien cobra el 31 y el mes tiene 30, ese mes cobra el 30; en febrero, el 28 o el
+29 según el año. `diaDeCobro()` recorta el día siempre desde el número que puso el
+usuario, y **nunca encadenando un resultado ya recortado**: partir del 30 que en realidad
+era un 31 perdería el 31 para todos los meses siguientes.
+
+**Los ciclos no se guardan: se derivan de la fecha.** No hay filas en el estado, sólo
+`salary`. Por eso cambiar el sueldo o el día de cobro recalcula el diario de *todos* los
+ciclos y no sólo el actual — no hay ningún número guardado que pueda quedar viejo — y por
+eso `state.periods` (los tramos a mano) queda intacto: quien pase a modo sueldo y vuelva
+encuentra sus tramos donde los dejó. `currentPeriod()` devuelve un período sintético con
+la forma de siempre, así el cierre de días, el acumulado y la tira de la semana funcionan
+sin enterarse.
+
+El sobre del ciclo:
+
+```
+a repartir = sueldo − ahorro − transporte
+diarioBase = a repartir ÷ días del ciclo
+```
+
+El usuario fija **uno** de los dos —cuánto quiere ahorrar o cuánto quiere gastar por día—
+y la app calcula el otro; es la misma ecuación despejada para cada lado y vive en un solo
+lugar (`planDelCiclo`). Se guarda lo que el usuario escribió (`mode` y `target`), nunca el
+número derivado: guardar los dos sería una segunda fuente de verdad.
+
+Acá **no** se divide por los días que faltan como en los tramos a mano. Con un ahorro
+prometido, un diario que sube cada día se comería justamente el ahorro. Lo que sí baja el
+número son los gastos "Aparte": cada uno se reparte entre los días que quedaban **cuando
+se hizo** y descuenta desde ese día hasta el fin del ciclo. Repartirlo sobre los días que
+faltan hoy haría que el diario bajara solo un poco cada día sin que el usuario gaste nada.
+Así la cuenta cierra: gastando el sobre todos los días sale exactamente lo que había para
+repartir, y el ahorro queda.
+
+### El ciclo parcial de arranque
+
+Si la app se configura con el ciclo ya empezado (cobra el 28 y hoy es 10), el sueldo
+entero no sirve: parte ya se gastó. Sólo para ese primer ciclo se pregunta cuánta plata
+tiene ahora y se reparte entre los días que faltan. Desde el ciclo siguiente rige el
+sueldo configurado, sin que nadie toque nada.
+
+Queda marcado en los datos como `salary.first`, con el inicio real del ciclo, el fin, el
+día en que se configuró (`from`) y el saldo. **El ciclo parcial arranca en `from`, no en
+el día del cobro**: los días de antes no los anotó nadie, así que `closeDays()` no tiene
+nada que cerrar ahí y el resumen no lo compara de igual a igual contra un ciclo entero.
+En pantalla lo dice la etiqueta chica "parcial", la misma que usa "a mano".
+
+Si se toca "usar el sueldo igual" queda `first` con `amount:0`: el diario es el de un ciclo
+normal sobre los días que quedan, pero el ciclo **sigue marcado como parcial**, porque lo
+es. `first` deja de regir solo cuando pasa el próximo cobro; no se borra, queda de registro.
 
 ## El modo sin límite
 
@@ -125,20 +188,31 @@ abajo una línea corta que dice qué se está pidiendo, más abajo las dos alter
 "Sin límite" y "Sueldo mensual", chicas y sin caja — y Empezar. Alguien tiene que poder
 abrirlo, escribir un número, tocar Empezar y no haber leído nada.
 
-El campo arranca pidiendo el **límite diario**, que es lo que quiere la mayoría. Con
-"Sueldo mensual" pasa a pedir el sueldo y la línea de abajo muestra el resultado
-**dividido 30** mientras se escribe, porque nadie elige a ciegas. Con "Sin límite" el
-campo se desactiva —no se esconde: así no salta el alto de la tarjeta—. Las dos
-alternativas son interruptores: tocar la que está marcada vuelve al límite diario sin
-cerrar el popup, que es el único camino de vuelta que hay. La selección se marca con color
-y un ✓, nunca con un borde de tarjeta.
+El campo arranca pidiendo el **límite diario**, que es lo que quiere la mayoría, y con eso
+solo se puede terminar en dos toques. Con "Sin límite" el campo se desactiva —no se
+esconde: así no salta el alto de la tarjeta—. La selección se marca con color y un ✓,
+nunca con un borde de tarjeta. Cambiar de rol o de paso **limpia el campo**: lo que estaba
+escrito querría decir otra cosa.
 
-Las tres opciones son las tres formas de contestar "cuánto puedo gastar hoy", y las dos
-que piden un número terminan en `dailyMode:'manual'`: la diferencia está en quién hace la
-división. Cambiar de rol **limpia el campo**: lo que estaba escrito querría decir otra
-cosa.
+"Sueldo del mes" abre los pasos del modo sueldo, siempre en la misma tarjeta y con el
+mismo campo grande:
 
-El popup es el único lugar de la app donde hay un `.focus()` programático, y va detrás de
+1. **El sueldo**, y abajo una línea con el día de cobro: `cobro el día [28] de cada mes`.
+   Un campo chico dentro de una oración, no un formulario.
+2. **El camino**: las dos alternativas de abajo pasan a ser "cuánto ahorro" y "cuánto gasto
+   por día". El usuario escribe uno y **la línea muestra los dos números mientras escribe**,
+   con el derivado en negrita y los días que tiene el ciclo. Nadie elige a ciegas: el
+   efecto se ve antes de confirmar. Un número que no entra —un diario que no llega al fin
+   del ciclo— dice cuánto falta y no deja confirmar.
+3. **La plata que tiene ahora**, sólo si el ciclo ya estaba empezado (ver el ciclo parcial).
+
+Las alternativas siguen siendo interruptores: tocar "Sueldo del mes" marcada vuelve al
+límite diario. Desde los pasos 2 y 3 se vuelve con un `volver` chico, la misma clase
+`.link` de "otro día". El límite diario fijo termina en `dailyMode:'manual'` y el sueldo en
+`dailyMode:'sueldo'`.
+
+El popup es el único lugar de la app donde hay un `.focus()` programático — uno solo,
+`enfocarOnb()`, que se llama también al cambiar de paso — y va detrás de
 `(hover: hover) and (pointer: fine)`. En una pantalla con mouse es lo que se quiere; en
 iOS el foco sin gesto no levanta el teclado y deja el campo activo de mentira, que es la
 trampa de siempre. Agregar el foco sin esa guarda es reintroducirla.
@@ -263,11 +337,15 @@ nada de credenciales en el código, ni de ejemplo.
 Un Gist secreto con un único archivo, `sobres.json`, creado por la app la primera vez.
 Permiso necesario en el token: **Gists: read and write**, nada más.
 
-El estado que se persiste (schema 5):
+El estado que se persiste (schema 6):
 
 ```json
-{ "schema": 5, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
+{ "schema": 6, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
   "setup": true, "nudged": "",
+  "salary": { "amount": 950000, "payday": 28, "mode": "ahorro", "target": 350000,
+              "transport": 0,
+              "first": { "start": "2026-08-28", "end": "2026-09-28",
+                         "from": "2026-09-10", "amount": 240000 } },
   "periods": [ { "id": 1, "start": "2026-08-05", "end": "2026-09-05", "transport": 60000,
                  "incomes": [ { "id": 1, "date": "2026-08-05", "amount": 900000, "note": "sueldo" } ] } ],
   "closed": [ { "date": "2026-08-05", "envelope": 25870 } ],
@@ -287,10 +365,14 @@ La fusión entre dispositivos (`merge()`) sigue tres reglas, y están así a pro
    o sea nunca editados — se queda con el de este dispositivo.
 2. Los borrados se registran como lápidas en `deleted`. Sin eso, un gasto borrado en el
    celular revive en la próxima sincronización desde la computadora.
-3. La configuración (`daily`, `dailyMode`, `weekStart`, `periods`) sí es
-   último-en-escribir-gana, según `updatedAt`. `periods` va entero, no fusionado por id:
-   un período medio mezclado entre dos dispositivos daría un diario que no es el de
-   ninguno de los dos.
+3. La configuración (`daily`, `dailyMode`, `weekStart`, `periods`, `salary`) sí es
+   último-en-escribir-gana, según `updatedAt`. `periods` y `salary` van enteros, no
+   fusionados campo a campo: un período o un sueldo medio mezclado entre dos dispositivos
+   daría un diario que no es el de ninguno de los dos.
+
+   `salary` es el único campo de ese grupo que puede valer `null`, así que va **sin `??`**:
+   con el operador, un dispositivo que escribió último y no usa el modo sueldo no podría
+   apagarlo y quedaría pegado un sueldo viejo que ya nadie eligió.
 
 Los `closed` se unen por `date`, como los items: dos dispositivos sin conexión entre
 medio cerraron días distintos y los dos valen.
@@ -390,6 +472,12 @@ Las migraciones son escalones encadenados: `if(from < 2) d = up1to2(d); if(from 
 up2to3(d);`. Un schema 1 pasa por los dos de una y llega al formato actual. Al agregar un
 escalón nuevo, no tocar los anteriores.
 
+`up5to6` deja `salary` en `null`: el sueldo no se puede adivinar de los gastos y el modo
+que el usuario venía usando no se toca, así que quien tenía un diario fijo sigue igual
+hasta que entre a Ajustes y lo cambie él. `dailyMode:'sueldo'` es, otra vez, un valor
+nuevo en un campo que ya existía, y por sí solo ya obligaba a subir el schema: el
+`normalize()` viejo lo colapsaba a `'manual'`.
+
 `up1to2` no inventa ingresos, porque en los datos viejos no hay: arma el período con lo
 que sí hay — el rango que cubren los gastos y lo gastado en transporte — y deja el diario
 en `manual` con el valor que ya tenía, así el número no cambia solo debajo de los pies
@@ -407,8 +495,9 @@ nuevos no ignora lo que no conoce: lo borra, y después lo sube así al Gist. Su
 número hace que esa versión se bloquee en vez de destruir el campo.
 
 **Un valor nuevo en un campo que ya existe cuenta igual.** `dailyMode:'none'` obligó a
-subir a 5 aunque el campo estuviera desde el 2: el `normalize()` viejo lo colapsaba a
-`'manual'` y le devolvía al usuario un sobre diario que nunca pidió.
+subir a 5 aunque el campo estuviera desde el 2, y `dailyMode:'sueldo'` a 6: el
+`normalize()` viejo los colapsaba a `'manual'` y le devolvía al usuario un sobre diario
+que nunca pidió.
 
 La migración baja a disco con `save(false)`. Con `save()` a secas, un dispositivo que
 abre con datos viejos marcaría `updatedAt` a ahora y le ganaría la configuración al que
