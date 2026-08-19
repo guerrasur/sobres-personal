@@ -420,6 +420,11 @@ summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-soft);lett
 .cfg{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
 .cfg > div{flex:1 1 150px}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+/* El prompt que aparece al bajar el CSV. El desplegable no lleva la separación
+   del <details> grande de Ajustes, que es la que parte las secciones. El campo
+   no pisa el font-size de arriba: abajo de 16px Safari hace zoom al enfocarlo. */
+.prompt-see{margin-top:14px;border-top:none;padding-top:0}
+.prompt-text{width:100%;margin-top:10px;line-height:1.5;resize:vertical}
 .box{margin-top:20px;padding:16px;background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius)}
 .box-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .box-copy{font-size:13px;color:var(--ink-soft);margin:8px 0 14px;max-width:56ch}
@@ -444,7 +449,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v4.2.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v4.3.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -612,7 +617,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       </div>
     </div>
 
-    <div class="tools">
+    <div class="tools" id="expTools">
       <button class="ghost mini" id="expCsv">Descargar CSV</button>
       <button class="ghost mini" id="expJson">Guardar respaldo</button>
       <button class="ghost mini" id="impBtn">Cargar respaldo</button>
@@ -628,6 +633,24 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
          abre: fuera de la pantalla principal, que es para anotar. -->
     <div class="imp-msg" id="impMsg" hidden></div>
     <div class="box" id="importBox" hidden></div>
+
+    <!-- El texto que se le pega a una IA junto con el CSV. Aparece al bajar el
+         archivo, acá o abajo del aviso de la pantalla principal: es la misma
+         tarjeta, que se mueve. El texto sale de PROMPT_IA y de ningún otro lado. -->
+    <div class="box" id="promptBox" hidden>
+      <div class="box-head">
+        <span class="eyebrow">Para pegarle a una IA</span>
+        <button class="link" id="promptClose" aria-label="Ocultar el texto">ocultar</button>
+      </div>
+      <p class="box-copy">Ya se bajó el archivo. Copiá este texto y pegáselo a una IA junto con el CSV.</p>
+      <div class="tools">
+        <button class="mini" id="promptCopy">Copiar el texto para la IA</button>
+      </div>
+      <details class="prompt-see" id="promptSee">
+        <summary>Ver el texto</summary>
+        <textarea class="prompt-text" id="promptText" readonly rows="10" aria-label="El texto para la IA"></textarea>
+      </details>
+    </div>
     <footer>
       Un sobre por día. Cuando se vacía, se vació.<br>
       Sin sincronizar, los datos quedan solo en este navegador y no necesitan internet. Si limpiás los datos del navegador, se pierden.
@@ -1473,7 +1496,7 @@ function bajarCsv(){
       .map(x=>[x.date,x.cat,x.amount,(x.note||'').replace(/"/g,'""')])];
   download('gastos.csv', '\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n'), 'text/csv');
 }
-document.getElementById('expCsv').onclick = bajarCsv;
+document.getElementById('expCsv').onclick = () => { bajarCsv(); mostrarPrompt(document.getElementById('expTools')); };
 document.getElementById('expJson').onclick = () => download('sobres-respaldo.json', JSON.stringify(state), 'application/json');
 document.getElementById('impBtn').onclick = () => document.getElementById('impFile').click();
 document.getElementById('impFile').onchange = e => {
@@ -1533,33 +1556,82 @@ function renderNudge(){
     : `Ya tenés ${a.meses} meses de gastos anotados.`;
 }
 
-document.getElementById('nudgeCsv').onclick = bajarCsv;
+document.getElementById('nudgeCsv').onclick = () => { bajarCsv(); mostrarPrompt(document.getElementById('nudge')); };
 document.getElementById('nudgeClose').onclick = () => {
   state.nudged = todayISO();
   save(); render();
 };
-document.getElementById('nudgeCopy').onclick = async () => {
-  const b = document.getElementById('nudgeCopy');
-  let ok = false;
-  try{
-    await navigator.clipboard.writeText(PROMPT_IA);
-    ok = true;
-  }catch(e){
-    /* Safari viejo y contextos sin permiso: el textarea de toda la vida. */
-    try{
-      const t = document.createElement('textarea');
-      t.value = PROMPT_IA;
-      t.setAttribute('readonly','');
-      t.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
-      document.body.appendChild(t);
-      t.select(); t.setSelectionRange(0, PROMPT_IA.length);
-      ok = document.execCommand('copy');
-      document.body.removeChild(t);
-    }catch(err){}
-  }
-  b.textContent = ok ? 'Copiado' : 'No se pudo copiar';
-  setTimeout(()=>{ b.textContent = 'Copiar el texto'; }, 2500);
-};
+/* ---------- copiar el texto para la IA ----------
+   Un solo texto (PROMPT_IA, arriba) y una sola forma de copiarlo, para los dos
+   botones que lo ofrecen: el del aviso y el de la tarjeta que aparece al bajar
+   el CSV. El textarea se llena de esa misma constante, así el texto vive en un
+   único lugar del archivo.
+
+   En iOS anclado a inicio el permiso del portapapeles vale mientras dura el
+   gesto y nada más: `writeText` tiene que ser lo primero que corre en el toque.
+   Por eso este handler NO es async y no hay un await ni una promesa intermedia
+   antes de la llamada — con uno solo, la copia falla sin decir nada. Lo que se
+   hace después de la promesa (avisar, o abrir el campo) ya no necesita permiso.
+
+   El botón siempre contesta: "Copiado" si salió, y si no, el texto queda a la
+   vista y seleccionado en el campo de abajo, que es un fallback que se puede
+   usar aunque el navegador no tenga la API. */
+const promptBox = () => document.getElementById('promptBox');
+
+/* Una sola tarjeta que se mueve al lado de lo que la pidió: el aviso de la
+   pantalla principal o el bloque de exportar de Ajustes. Dos copias del mismo
+   texto en el documento serían dos lugares donde puede quedar viejo. */
+function mostrarPrompt(despuesDe){
+  const box = promptBox();
+  if(despuesDe && despuesDe.parentNode && despuesDe !== box)
+    despuesDe.parentNode.insertBefore(box, despuesDe.nextSibling);
+  box.hidden = false;
+  /* scrollIntoView y nunca focus(): en iOS el foco programático no levanta el
+     teclado y deja el campo activo de mentira. Ver CLAUDE.md. */
+  box.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  return box;
+}
+
+/* El camino de toda la vida, sobre el campo que ya está en la tarjeta: se abre,
+   se selecciona y se intenta copiar. Aunque execCommand falle, el texto quedó
+   desplegado y seleccionado, que es lo que hace falta para copiarlo a mano. */
+function copiaSeleccionando(despuesDe){
+  mostrarPrompt(despuesDe);
+  const txt = document.getElementById('promptText');
+  document.getElementById('promptSee').open = true;
+  txt.select();
+  txt.setSelectionRange(0, PROMPT_IA.length);
+  try{ return document.execCommand('copy'); }catch(e){ return false; }
+}
+
+/* Un timer por botón: los dos ofrecen lo mismo y se pueden tocar uno detrás
+   del otro; con un timer compartido, el primero se quedaba en "Copiado". */
+function botonCopiar(b, despuesDe){
+  const original = b.textContent;
+  let timer = null;
+  const marcar = ok => {
+    b.textContent = ok ? 'Copiado' : 'Copialo del campo de abajo';
+    clearTimeout(timer);
+    timer = setTimeout(()=>{ b.textContent = original; }, 2500);
+  };
+  b.onclick = () => {
+    let pedido = null;
+    /* la primera línea del gesto: nada puede correr antes que esto */
+    try{ pedido = navigator.clipboard && navigator.clipboard.writeText(PROMPT_IA); }
+    catch(e){ pedido = null; }
+    if(pedido && typeof pedido.then === 'function'){
+      pedido.then(() => marcar(true), () => marcar(copiaSeleccionando(despuesDe)));
+      return;
+    }
+    /* sin API: el camino viejo, todavía adentro del gesto */
+    marcar(copiaSeleccionando(despuesDe));
+  };
+}
+
+document.getElementById('promptText').value = PROMPT_IA;
+document.getElementById('promptClose').onclick = () => { promptBox().hidden = true; };
+botonCopiar(document.getElementById('promptCopy'), null);
+botonCopiar(document.getElementById('nudgeCopy'), document.getElementById('nudge'));
 
 document.getElementById('wipe').onclick = () => {
   if(!confirm('Se borran todos los gastos anotados. ¿Seguro?')) return;
