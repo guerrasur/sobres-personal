@@ -191,14 +191,51 @@ siguiente se cuenta desde ahí. Sin gastos anotados no aparece nunca, porque no 
 que analizar. El texto que se copia es literal y está en `PROMPT_IA`: si se toca, se toca
 entero y a propósito.
 
+## Claro y oscuro
+
+Dos temas. El claro es el de siempre; el oscuro arranca del **fondo del ícono**
+(`#242424`), para que la app y el ícono anclado a la pantalla de inicio sean del mismo
+color. Los acentos se aclaran en oscuro — el violeta `#4B2FA0` sobre `#242424` no se lee —
+y por eso existe `--on-accent`: arriba de un botón lleno, el texto es blanco en claro y
+casi negro en oscuro.
+
+**Todo color vive en `:root`.** Un `rgba()` suelto en una regla no cambia con el tema y
+desaparece contra el fondo oscuro; por eso los fondos tenues de las etiquetas, los avisos
+y las categorías son variables (`--violet-soft`, `--teal-line`, `--ochre-ghost`, …) y no
+literales. Las tres reglas de la paleta tienen que decir lo mismo: `:root` es el tema
+claro, el bloque de `@media (prefers-color-scheme:dark)` es "el dispositivo está en oscuro
+y el usuario no pidió claro", y `:root[data-theme="oscuro"]` es la elección a mano. Al
+tocar una de las dos que definen el oscuro, se tocan las dos.
+
+El tema se elige en Ajustes, con tres botones: **Automático, Claro y Oscuro**. Automático
+es el que viene, y no escribe nada en el `<html>`: así el media query del CSS hace el
+trabajo solo — incluso antes de que corra el JS — y el tema sigue al dispositivo cuando
+cambia al atardecer, sin recargar.
+
+**El tema es de este dispositivo, no del usuario.** Vive en su propia clave de
+`localStorage` (`sobres.tema`), fuera del estado. Por eso no sube el schema y no se
+sincroniza: el celular en oscuro no tiene por qué poner en oscuro la computadora, que es
+lo que pasaría si viajara al Gist. Es la misma razón por la que la cola de cambios sin
+sincronizar tampoco está en el estado.
+
+La barra de estado del iPhone toma el `theme-color`, así que se mueve con el tema: sin
+eso queda un rectángulo claro arriba de la app oscura. Los íconos, en cambio, no cambian:
+son `#242424` siempre, que es de donde salió el fondo oscuro.
+
 ## Restricciones que no se negocian
 
 **Un solo archivo.** `index.html` contiene HTML, CSS y JS. Sin build, sin bundler, sin
 dependencias instalables. Se edita, se sube al repo y ya está en producción. Cualquier
 propuesta que requiera `npm install` rompe el punto del proyecto.
 
-La única excepción es `sw.js`, y es forzada: un service worker no se puede registrar
-desde un script embebido. Está en la misma categoría que `manifest.json` y los íconos —
+Adentro del archivo hay **dos** bloques `<script>`, y el chico que está en el `<head>` no
+es un descuido: aplica el tema elegido a mano antes del primer pintado. Bajado al final
+del body, alguien con el tema oscuro fijado vería un flash claro cada vez que abre la app.
+No es una puerta a repartir el JS en bloques: lo que no tenga que correr antes de pintar
+va abajo, con todo lo demás.
+
+La única excepción de archivo es `sw.js`, y es forzada: un service worker no se puede
+registrar desde un script embebido. Está en la misma categoría que `manifest.json` y los íconos —
 archivos sueltos en la raíz que el navegador exige separados —, no es una puerta abierta
 a partir el JS de la app en módulos.
 
