@@ -303,9 +303,18 @@ button.mini{font-size:12px;padding:5px 10px}
 }
 .nudge[hidden]{display:none}
 .nudge-head{display:flex;align-items:baseline;gap:10px}
+/* display explícito le gana al atributo hidden: sin esta línea el aviso del
+   mes no se puede esconder y queda un “ocultar” suelto arriba del botón. */
+.nudge-head[hidden]{display:none}
 .nudge-head b{font-weight:700;flex:1;min-width:0}
 .nudge p{margin:6px 0 0;color:var(--ink-soft);max-width:56ch}
 .nudge .tools{margin-top:12px}
+/* el botón de exportar solo, sin el aviso del mes: una fila y nada de tarjeta */
+.nudge.plain{background:none;border-color:transparent;padding:0;margin-top:14px}
+.nudge.plain .tools{margin-top:0}
+/* la advertencia previa a exportar: tibia, nunca de alarma. El color sale de
+   :root, que es donde vive todo color: un rgba() suelto no cambia con el tema. */
+.nudge.warn{background:var(--ochre-ghost);border-color:var(--ochre-soft)}
 
 /* primer uso: aparece una sola vez, cuando no hay nada guardado ni un Gist
    configurado. Un solo campo grande y las alternativas chicas abajo: se abre,
@@ -455,7 +464,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v4.4.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v4.5.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -500,17 +509,37 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
     </div>
   </div>
 
-  <!-- Al mes del primer gasto, y después una vez por mes: bajar el CSV y
-       pedirle a una IA que lo mire. Un aviso, no un popup. -->
-  <div class="nudge" id="nudge" hidden>
-    <div class="nudge-head">
+  <!-- Exportar, abajo del formulario: el botón está siempre y a la vista, para
+       cualquiera. Al mes del primer gasto, y después una vez por mes, el mismo
+       bloque crece con el aviso de que ya hay algo para analizar — un aviso,
+       nunca un popup: anotar un gasto sigue siendo lo primero que se puede
+       hacer al abrir. Sin el aviso queda la fila del botón y nada más
+       (`.plain`), para no meterle una tarjeta arriba de la lista. -->
+  <div class="nudge plain" id="nudge">
+    <div class="nudge-head" id="nudgeHead" hidden>
       <b id="nudgeTitle"></b>
       <button class="link" id="nudgeClose" aria-label="Ocultar el aviso">ocultar</button>
     </div>
-    <p>Bajá el CSV y pegale el texto a una IA para que te diga en qué se te va la plata.</p>
+    <p id="nudgeLine" hidden>Bajá el CSV y pegale el texto a una IA para que te diga en qué se te va la plata.</p>
     <div class="tools">
-      <button class="ghost mini" id="nudgeCsv">Descargar CSV</button>
-      <button class="ghost mini" id="nudgeCopy">Copiar el texto</button>
+      <button class="ghost mini" id="homeCsv">Exportar gastos</button>
+      <button class="ghost mini" id="nudgeCopy" hidden>Copiar el texto</button>
+    </div>
+  </div>
+
+  <!-- Lo que se avisa antes de bajar el archivo, según cuántos días con gastos
+       hay y si ya cerró un ciclo de cobro. Es una sugerencia y nunca un
+       permiso: siempre está "Exportar igual" y siempre se puede cerrar sin
+       exportar. Una sola tarjeta que se mueve al lado del botón que la pidió,
+       igual que la del texto para la IA. -->
+  <div class="nudge warn" id="expWarn" hidden>
+    <div class="nudge-head">
+      <b>Antes de exportar</b>
+      <button class="link" id="expWarnClose" aria-label="Cerrar el aviso">cerrar</button>
+    </div>
+    <p id="expWarnText"></p>
+    <div class="tools">
+      <button class="ghost mini" id="expWarnGo">Exportar igual</button>
     </div>
   </div>
 
@@ -1767,13 +1796,86 @@ function download(name, content, type){
 /* El BOM va con una sola barra: con la barra duplicada el archivo arrancaba
    con esas seis letras impresas dentro de la primera celda, en vez de con la
    marca que hace que Excel lea bien los acentos. */
+/* El archivo lleva la fecha en que se bajó (sobres-2026-08-19.csv): con un
+   nombre fijo cada exportación pisaba a la anterior en la carpeta de descargas,
+   y comparar dos meses era imposible. */
 function bajarCsv(){
   const rows = [['fecha','categoria','monto','detalle'],
     ...[...state.items].sort((a,b)=>a.date.localeCompare(b.date))
       .map(x=>[x.date,x.cat,x.amount,(x.note||'').replace(/"/g,'""')])];
-  download('gastos.csv', '\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n'), 'text/csv');
+  download(`sobres-${todayISO()}.csv`, '\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n'), 'text/csv');
 }
-document.getElementById('expCsv').onclick = () => { bajarCsv(); mostrarPrompt(document.getElementById('expTools')); };
+
+/* ---------- exportar: un solo camino ----------
+   Tres botones bajan el CSV —el fijo de la pantalla principal, el del aviso
+   mensual y el de Ajustes— y los tres pasan por acá: se avisa si hace falta,
+   se baja el archivo y aparece la tarjeta con el texto para la IA al lado del
+   botón que se tocó. Un flujo y no tres.
+
+   Los avisos son sugerencia y nunca permiso: los dos traen "Exportar igual" y
+   los dos se pueden cerrar sin bajar nada. Exportar no se bloquea jamás. */
+
+/* Días con al menos un gasto anotado. NO son los días desde que se instaló la
+   app: quien la abrió hace tres semanas y anotó cuatro gastos tiene cuatro días
+   de datos, no veintiuno. */
+function diasConGastos(){
+  return new Set(state.items.map(x => x.date)).size;
+}
+
+/* ¿Ya cerró un ciclo de cobro adentro de los datos? Se mira el ciclo —o el
+   tramo— en el que cayó el primer gasto: si hoy ya pasó su fin, hay un ciclo
+   entero anotado de punta a punta y el análisis se puede hacer completo. Por
+   eso el aviso no vuelve cada mes: alcanza con haber cerrado uno.
+   A mano o sin límite no hay ciclo de cobro que esperar, así que no se avisa. */
+function cicloCerrado(){
+  if(!state.items.length) return false;
+  const primero = state.items.map(x => x.date).sort()[0];
+  const t = todayISO();
+  if(state.dailyMode === 'sueldo'){
+    const s = state.salary;
+    if(!s || !s.payday) return true;
+    return t >= cicloDe(primero, s.payday).end;
+  }
+  if(state.dailyMode === 'auto'){
+    const p = state.periods.find(x => primero >= x.start && primero < x.end);
+    return p ? t >= p.end : true;
+  }
+  return true;
+}
+
+/* Qué hay que avisar antes de bajar el archivo, o null si no hay nada que
+   decir y se exporta derecho. */
+function avisoPrevio(){
+  const dias = diasConGastos();
+  if(dias < 10) return { dias,
+    texto:`Con ${dias} día${dias === 1 ? '' : 's'} de gastos el análisis no va a ser muy útil. Mejor esperá a tener unos 10.` };
+  if(!cicloCerrado()) return { dias,
+    texto:'Ya podés exportar tus datos, pero te recomendamos que esperes a completar el ciclo de cobro para un análisis mucho más certero.' };
+  return null;
+}
+
+function flujoExportar(ancla){
+  const a = avisoPrevio();
+  if(!a) return exportarYa(ancla);
+  const box = document.getElementById('expWarn');
+  document.getElementById('expWarnText').textContent = a.texto;
+  document.getElementById('expWarnGo').onclick = () => exportarYa(ancla);
+  if(ancla && ancla.parentNode && ancla !== box)
+    ancla.parentNode.insertBefore(box, ancla.nextSibling);
+  box.hidden = false;
+  /* scrollIntoView y nunca focus(): ver CLAUDE.md. */
+  box.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function exportarYa(ancla){
+  document.getElementById('expWarn').hidden = true;
+  bajarCsv();
+  mostrarPrompt(ancla);
+}
+
+document.getElementById('expWarnClose').onclick = () => { document.getElementById('expWarn').hidden = true; };
+document.getElementById('homeCsv').onclick = () => flujoExportar(document.getElementById('nudge'));
+document.getElementById('expCsv').onclick = () => flujoExportar(document.getElementById('expTools'));
 document.getElementById('expJson').onclick = () => download('sobres-respaldo.json', JSON.stringify(state), 'application/json');
 document.getElementById('impBtn').onclick = () => document.getElementById('impFile').click();
 document.getElementById('impFile').onchange = e => {
@@ -1823,17 +1925,20 @@ function avisoExportar(){
   return { primero, meses: Math.max(1, Math.floor(daysBetween(primero, todayISO()) / 30)) };
 }
 
+/* El bloque de exportar no aparece y desaparece: el botón está siempre. Lo que
+   se prende y se apaga es el aviso del mes, que le agrega el título, la línea y
+   el atajo para copiar el texto. */
 function renderNudge(){
-  const box = document.getElementById('nudge');
   const a = avisoExportar();
-  box.hidden = !a;
+  document.getElementById('nudge').classList.toggle('plain', !a);
+  document.getElementById('nudgeHead').hidden = !a;
+  document.getElementById('nudgeLine').hidden = !a;
+  document.getElementById('nudgeCopy').hidden = !a;
   if(!a) return;
   document.getElementById('nudgeTitle').textContent = a.meses === 1
     ? 'Ya tenés un mes de gastos anotados.'
     : `Ya tenés ${a.meses} meses de gastos anotados.`;
 }
-
-document.getElementById('nudgeCsv').onclick = () => { bajarCsv(); mostrarPrompt(document.getElementById('nudge')); };
 document.getElementById('nudgeClose').onclick = () => {
   state.nudged = todayISO();
   save(); render();
