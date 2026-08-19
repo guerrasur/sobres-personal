@@ -68,6 +68,10 @@ try{
   --ochre-ghost:rgba(184,106,18,.06);
   --clay-soft:rgba(158,47,39,.10);
   --clay-line:rgba(158,47,39,.30);
+  /* Ahorros: la categoría que no mueve ningún número, y por eso es la única
+     apagada. Con un acento parecería que pesa como las otras tres. */
+  --slate:#4A4458;
+  --slate-soft:rgba(34,28,51,.09);
   --radius:3px;
   /* Tipografías del sistema: la app tiene que verse igual de bien sin red, y
      en el subte no hay a quién pedirle un woff2. Ver CLAUDE.md. */
@@ -104,6 +108,8 @@ try{
   --ochre-ghost:rgba(224,166,74,.09);
   --clay-soft:rgba(240,129,122,.15);
   --clay-line:rgba(240,129,122,.42);
+  --slate:#C6C1D2;
+  --slate-soft:rgba(255,255,255,.11);
   }
 }
 /* elegido a mano en Ajustes: le gana al dispositivo */
@@ -134,6 +140,8 @@ try{
   --ochre-ghost:rgba(224,166,74,.09);
   --clay-soft:rgba(240,129,122,.15);
   --clay-line:rgba(240,129,122,.42);
+  --slate:#C6C1D2;
+  --slate-soft:rgba(255,255,255,.11);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -258,15 +266,17 @@ input.num-in{font-family:var(--mono);font-weight:700}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--violet);outline-offset:1px}
 input:disabled,select:disabled{background:var(--disabled);color:var(--ink-soft)}
 #amount{font-family:var(--mono);font-weight:700;font-size:28px;padding:12px 14px;letter-spacing:-.02em}
-.cats,.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}
+.cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:9px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}
 .seg{margin-top:0}
 .segb{padding:12px 4px;font-size:13px;font-weight:600;border-radius:var(--radius);touch-action:manipulation}
 .segb:hover{opacity:1;border-color:var(--ink-soft)}
-.cat,.segb{background:var(--field);color:var(--ink-soft);border:1px solid var(--line);padding:12px 4px;font-size:13px;font-weight:600;touch-action:manipulation}
+.cat,.segb{background:var(--field);color:var(--ink-soft);border:1px solid var(--line);padding:12px 3px;font-size:12.5px;font-weight:600;touch-action:manipulation}
 .cat:hover{opacity:1;border-color:var(--ink-soft)}
 .cat.on,.segb.on{background:var(--violet-soft);border-color:var(--violet);color:var(--violet)}
 .cat.on[data-cat="transporte"]{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
 .cat.on[data-cat="unico"]{background:var(--ochre-soft);border-color:var(--ochre);color:var(--ochre)}
+.cat.on[data-cat="ahorro"]{background:var(--slate-soft);border-color:var(--slate);color:var(--slate)}
 #note{margin-top:9px}
 .acts{display:flex;align-items:center;gap:10px;margin-top:12px}
 #add{flex:1;padding:13px 18px;font-size:15px}
@@ -376,6 +386,7 @@ h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
 .tag.diario{background:var(--violet-soft);color:var(--violet)}
 .tag.transporte{background:var(--teal-soft);color:var(--teal)}
 .tag.unico{background:var(--ochre-soft);color:var(--ochre)}
+.tag.ahorro{background:var(--slate-soft);color:var(--slate)}
 .tag.ingreso{background:var(--teal-soft);color:var(--teal)}
 .item .edit{
   flex:1;min-width:0;display:flex;align-items:flex-start;gap:10px;
@@ -425,6 +436,7 @@ h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
 .tot .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
 .tot .v{font-family:var(--mono);font-size:21px;font-weight:700;margin-top:5px}
 .tot.violet .v{color:var(--violet)} .tot.teal .v{color:var(--teal)} .tot.ochre .v{color:var(--ochre)}
+.tot.slate .v{color:var(--slate)}
 
 /* importar lo dictado: qué va a entrar, antes de confirmar.
    `.imp-msg` no lleva display propio: así el [hidden] del navegador alcanza. */
@@ -461,7 +473,11 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
   #amount{font-size:25px}
   .env{height:72px}
   .env .v{font-size:10px}
-  .cat{font-size:12px;padding:12px 2px}
+  .cat{font-size:11.5px;padding:12px 1px}
+}
+/* cuatro categorías en una pantalla angosta: el rótulo más largo manda */
+@media (max-width:370px){
+  .cat{font-size:10.5px;letter-spacing:-.01em}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -470,7 +486,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v4.6.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v4.7.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -526,6 +542,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <button class="cat on" data-cat="diario">Del día</button>
       <button class="cat" data-cat="transporte">Transporte</button>
       <button class="cat" data-cat="unico">Aparte</button>
+      <button class="cat" data-cat="ahorro">Ahorros</button>
     </div>
     <input id="note" type="text" placeholder="en qué (opcional)" aria-label="En qué">
     <div class="acts">
@@ -599,6 +616,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <div class="tot violet"><div class="k">Del día</div><div class="v num" id="mDiario">—</div></div>
       <div class="tot teal"><div class="k">Transporte</div><div class="v num" id="mTransporte">—</div></div>
       <div class="tot ochre"><div class="k">Aparte</div><div class="v num" id="mUnico">—</div></div>
+      <div class="tot slate"><div class="k">Ahorros</div><div class="v num" id="mAhorro">—</div></div>
       <div class="tot"><div class="k">Total</div><div class="v num" id="mTotal">—</div></div>
     </div>
   </section>
@@ -779,7 +797,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <script>
 const KEY = 'sobres.v1';
-const SCHEMA = 7;
+const SCHEMA = 8;
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
 const plain = n => new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n||0);
 const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -886,8 +904,10 @@ function saldoDe(start, end){
 function saldoGastado(){
   const s = state.saldo;
   if(!s) return 0;
+  /* Lo que salió de ahorros no salió de esta plata: sumarlo dejaría el campo
+     precargado en mucho menos de lo que el usuario tiene en el bolsillo. */
   return state.items
-    .filter(x => x.date >= s.date && x.date <= todayISO())
+    .filter(x => x.cat !== 'ahorro' && x.date >= s.date && x.date <= todayISO())
     .reduce((a,x)=>a+x.amount, 0);
 }
 const saldoRestante = () => Math.max(0, (state.saldo ? state.saldo.amount : 0) - saldoGastado());
@@ -993,6 +1013,8 @@ function cicloCalc(fecha){
              parcial de arranque) y un cuarto valor para dailyMode: 'sueldo'.
    schema 7: agrega saldo, la plata que el usuario dice que tiene ahora, con el
              día en que la cargó.
+   schema 8: agrega un cuarto valor para cat: 'ahorro', el gasto que salió de
+             plata que no es la del período.
    migrate() es la única puerta de entrada: localStorage, Gist y respaldos
    importados pasan por acá. Si el dato viene de un schema más nuevo que el
    que entiende esta copia de la app, no se toca: se avisa y listo. */
@@ -1015,6 +1037,7 @@ function migrate(raw){
   if(from < 5) d = up4to5(d);
   if(from < 6) d = up5to6(d);
   if(from < 7) d = up6to7(d);
+  if(from < 8) d = up7to8(d);
   return {ok:true, from, migrated:from < SCHEMA, state:normalize(d)};
 }
 
@@ -1068,6 +1091,16 @@ function up5to6(d){
    El criterio de siempre: nunca completar con datos que el usuario no cargó. */
 function up6to7(d){
   return { ...d, schema:7, saldo:null };
+}
+
+/* Nada que completar: los gastos ya anotados se quedan en la categoría que
+   tienen. Cuál de todos salió de ahorros lo sabe el usuario y nadie más —
+   adivinarlo por el monto le cambiaría el diario de meses enteros. El escalón
+   existe igual porque `cat:'ahorro'` es un valor nuevo, y una versión vieja de
+   la app lo colapsaría a 'diario': el gasto pasaría a comerse el sobre del día
+   en vez de no tocar nada. Bloquearse es mejor que eso. */
+function up7to8(d){
+  return { ...d, schema:8 };
 }
 
 /* El sueldo se reconstruye campo por campo, como todo lo demás. Si viene roto o
@@ -1130,7 +1163,7 @@ function normalize(d){
     updatedAt: int(d.updatedAt),
     items: d.items.filter(x => x && x.date).map(x => ({
       id: x.id ?? uid(), date:String(x.date).slice(0,10), amount:int(x.amount),
-      cat: ['diario','transporte','unico'].includes(x.cat) ? x.cat : 'diario',
+      cat: ['diario','transporte','unico','ahorro'].includes(x.cat) ? x.cat : 'diario',
       note: String(x.note||''), updatedAt: int(x.updatedAt)
     }))
   };
@@ -1399,7 +1432,7 @@ document.getElementById('tabMas').onclick = () => setView('mas');
 let whyOpen = false;
 let editId = null;
 
-const CAT = { diario:'día', transporte:'transporte', unico:'aparte' };
+const CAT = { diario:'día', transporte:'transporte', unico:'aparte', ahorro:'ahorros' };
 
 function render(){
   const today = todayISO();
@@ -1594,6 +1627,7 @@ function renderMonth(today){
   document.getElementById('mDiario').textContent = fmt(by('diario'));
   document.getElementById('mTransporte').textContent = fmt(by('transporte'));
   document.getElementById('mUnico').textContent = fmt(by('unico'));
+  document.getElementById('mAhorro').textContent = fmt(by('ahorro'));
   document.getElementById('mTotal').textContent = fmt(inMonth.reduce((s,x)=>s+x.amount,0));
   document.getElementById('monthName').textContent =
     new Date(today+'T00:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'});
@@ -2097,6 +2131,11 @@ document.getElementById('impFile').onchange = e => {
 
 const PROMPT_IA = `Te paso un CSV con mis gastos personales de un mes. Las columnas son: fecha,
 categoría, monto y detalle. Los montos están en pesos argentinos.
+
+Las categorías son cuatro: "diario" es el gasto de todos los días, "transporte" tiene
+presupuesto propio, "unico" son compras puntuales del mes, y "ahorro" es lo que pagué
+con plata ahorrada y no con lo que cobré ese mes. Los "ahorro" no son gasto corriente:
+miralos aparte y no los mezcles en el promedio por día.
 
 Quiero que me ayudes a entender en qué se me va la plata. Concretamente:
 
