@@ -33,34 +33,6 @@ Tocar el número grande abre la cuenta (`renderWhy`) con cada término, hasta lo
 hoy. El número tiene que poder auditarse desde la app, no de memoria. Es el **único**
 lugar donde se explica de dónde sale: nunca fijo en pantalla.
 
-## Cómo se ve
-
-Fondo negro, texto blanco, grises para lo secundario y **un solo acento de color,
-reservado al saldo**: `--ok` verde si queda plata, `--bad` rojo si está en cero o en
-negativo. Ningún otro elemento de la app usa color — ni las categorías, ni el sobrante del
-período, ni el estado de la sincronización. Si algo necesita distinguirse, se distingue
-con blanco contra gris, con el signo o con una hairline, nunca pintándolo. Meter un
-segundo color es deshacer el rediseño.
-
-Toda la app es **monoespaciada** (`--mono`, la del sistema). No hay una tipografía de
-texto y otra de números: la grilla del monoespaciado es lo que hace que las columnas se
-alineen solas y que la app se lea como un instrumento y no como una fintech.
-
-Lo que separa las cosas es el **aire** y una hairline de 1px (`--line` entre bloques,
-`--line-2` entre filas de una lista). **No hay tarjetas**: nada de cajas con fondo, borde
-y radio alrededor de un contenido. `--surface` es para los campos de texto y para los tres
-avisos (red, versión nueva, formato bloqueado), y nada más. Pocas cosas grandes antes que
-muchas chicas.
-
-Casi todo se lee como una tabla: rótulo gris a la izquierda, número a la derecha, alineado
-en columnas — la semana, los días cerrados, los totales del mes y la cuenta del número. El
-único botón lleno de la app es Anotar (blanco con texto negro), porque es la acción a la
-que se viene.
-
-El número grande va sin el espacio del formato (`fmtBig`): en monoespaciada ese espacio
-mide lo mismo que un dígito y le come el ancho a la cifra, que es justo lo que tiene que
-leerse de lejos.
-
 ## La pantalla principal son tres cosas
 
 La app se abre para anotar un gasto y cerrarla. La vista `Hoy` tiene tres cosas y nada
@@ -111,18 +83,17 @@ Los días que se cierran uno por uno, con la app abriéndose a diario, son exact
 `periodTally()` devuelve el acumulado **neteado**: los días que se pasaron descuentan. Un
 contador que sólo sube sería mentira.
 
-Sobre el signo y el color: **el sobrante no lleva color**. El que sobró va en blanco con
-`+`, el que se pasó en gris con `−`, y el acumulado en negativo también en gris. El signo
-hace todo el trabajo. Es un registro para encontrar el día que se fue de línea, no un
-reto, y el rojo es del saldo de hoy: usarlo acá sería decir que pasarse un día es una
-emergencia.
+Sobre el signo y el color: el sobrante va en `--teal` con `+`, el exceso en `--ink-soft`
+con `−` y un fondo apenas tibio. **El exceso nunca va en `--clay` ni en rojo de alarma.**
+Es un registro para encontrar el día que se fue de línea, no un reto. El acumulado en
+negativo sí usa `--ochre`, que es lo más fuerte que corresponde acá.
 
 La lista vive en `Resumen`, siempre desplegada y sin resumen escrito arriba: cada fila
 dice el día, si sobró o se pasó, la diferencia y —en una segunda línea, entera, sin
 cortarse contra el ancho— cuánto se gastó de cuánto. Con eso alcanza; el párrafo que
 explicaba el mecanismo se fue.
 
-`dailyMode` puede ser `'auto'`, `'manual'` o `'none'`. En manual aparece la etiqueta gris
+`dailyMode` puede ser `'auto'`, `'manual'` o `'none'`. En manual aparece la etiqueta ocre
 "a mano" al lado de "Queda hoy": nunca hay que dejar ambiguo de dónde sale el monto, pero
 tampoco hay que tratarlo como un estado a medio configurar. Cuando no hay con qué calcular
 (sin período, período vencido, sin ingresos) el diario **no** se inventa: se muestra "—" y
@@ -133,7 +104,7 @@ una línea corta de qué falta, de una oración, nunca instrucciones.
 `dailyMode: 'none'` es un modo real, no una variante cosmética: hay gente que quiere
 anotar en qué se le va la plata y nada más. Con él activo el número grande deja de ser lo
 que queda y pasa a ser **lo gastado hoy**, y desaparecen el sobre diario, la barra de
-proporción, la cuenta que se abre al tocar el número, la semana, el sobrante del
+proporción, la cuenta que se abre al tocar el número, la tira semanal, el sobrante del
 período y los tramos con sus ingresos, que no se piden ni se muestran.
 
 Ahí "gastado hoy" es **todo lo anotado hoy** (`totalOn`), no sólo `diario` (`spentOn`).
@@ -231,14 +202,20 @@ desde un script embebido. Está en la misma categoría que `manifest.json` y los
 archivos sueltos en la raíz que el navegador exige separados —, no es una puerta abierta
 a partir el JS de la app en módulos.
 
+`estilos/` tampoco la abre: son copias enteras de la app congeladas por su aspecto, para
+poder retomar un diseño más adelante (ver `estilos/LEEME.md`). No se cargan, no se
+importan y no se linkean desde la app; para el navegador no existen. Un archivo ahí es un
+archivo muerto: los arreglos van a `index.html` y sólo a `index.html`. Si alguna vez uno
+de esos estilos vuelve, vuelve reemplazando la raíz, no conviviendo con ella.
+
 **Sin backend.** Los datos viven en `localStorage` y, opcionalmente, en un Gist secreto
 del usuario. No agregar servidores, bases de datos ni servicios de terceros.
 
 **Nada que se baje de la red al abrir.** La app tiene que arrancar entera sin señal: el
-momento en que el usuario más quiere anotar un gasto es en el subte. Por eso la
-tipografía es la monoespaciada del sistema (`--mono` en `:root`) y no una de Google Fonts,
-que era lo que había antes y hacía que sin red cargara fea. Si alguna vez se quiere una
-tipografía propia, va empaquetada en el archivo, nunca por CDN.
+momento en que el usuario más quiere anotar un gasto es en el subte. Por eso las
+tipografías son del sistema (`--sans`, `--display`, `--mono` en `:root`) y no de Google
+Fonts, que era lo que había antes y hacía que sin red cargara fea. Si alguna vez se
+quiere una tipografía propia, va empaquetada en el archivo, nunca por CDN.
 
 **El token nunca va en el repo.** El token de GitHub lo escribe el usuario en cada
 dispositivo y queda en `localStorage` bajo la clave `sobres.sync`. El repo es público:
@@ -293,8 +270,7 @@ después de traer datos remotos, para no rebotar el cambio de vuelta al Gist.
 
 Tocar un gasto de cualquiera de las dos listas lo abre para editar **en el formulario de
 Hoy**, que se reusa en vez de duplicar los campos. Si se tocó desde el historial, la app
-cambia sola a `Hoy`, que es donde está el formulario. El formulario se marca con una
-barra blanca al costado, el botón pasa
+cambia sola a `Hoy`, que es donde está el formulario. Se marca en violeta, el botón pasa
 a "Guardar cambios" y aparece Cancelar: nunca hay que dudar entre anotar y editar. Si el
 gasto es de otro día, la fecha se muestra sola. Se hace `scrollIntoView`, nunca
 `.focus()` — ver las trampas de iOS.
@@ -411,7 +387,7 @@ toques y ejecutaba JS, pero al tocar un campo no subía el teclado. Lo que lo ar
 - `-webkit-user-select: text` y `-webkit-touch-callout: default` en `body` y en los inputs.
   WebKit en standalone trata los campos como no editables si esto no está explícito.
 - `touch-action: manipulation` en los inputs.
-- Quitar el `.focus()` programático al tocar un día de la semana. iOS acepta el
+- Quitar el `.focus()` programático al tocar un sobre de la tira semanal. iOS acepta el
   foco pero no levanta el teclado, y deja el campo "activo" de mentira. La única
   excepción es el campo del popup de primer uso, y sólo porque va detrás de
   `(hover: hover) and (pointer: fine)`: en iOS ese `.focus()` no llega a correr.
@@ -421,19 +397,6 @@ toques y ejecutaba JS, pero al tocar un campo no subía el teclado. Lo que lo ar
 una sincronización, redibujaba media pantalla y mataba el foco recién adquirido.
 
 **Los inputs van a 16px o más.** Abajo de eso Safari hace zoom automático al enfocar.
-
-**El safe area no se hereda solo.** Con fondo negro la barra de estado va en
-`black-translucent` y el viewport en `viewport-fit=cover`, así el negro de la app llega
-hasta arriba de todo en la pantalla anclada a inicio. El precio es que el contenido pasa
-por abajo del reloj y del indicador de inicio si no se lo separa a mano: el header suma
-`env(safe-area-inset-top)`, la barra de deshacer `env(safe-area-inset-bottom)` y `.wrap`
-los dos laterales, que son los que importan en horizontal. Sacar cualquiera de los tres
-mete el título abajo del reloj.
-
-**Nada fijo al fondo salvo la barra de deshacer.** El teclado de iOS empuja el viewport y
-todo lo que esté en `position:fixed` abajo se le monta encima. Anotar es el único botón
-que importa y va en el flujo, no anclado: el formulario entra completo sin scroll y con el
-teclado abierto sube con la página.
 
 ## Número de versión — obligatorio
 
@@ -447,6 +410,11 @@ de comportamiento suben la minor (`v1.1.0`), arreglos suben la patch (`v1.0.1`).
 un cambio sin tocar la versión hace perder tiempo depurando un archivo que ni siquiera
 llegó al dispositivo.
 
+**El número nunca baja, ni siquiera al volver atrás.** La v4.0.0 fue el rediseño oscuro y
+la v4.1.0 lo revirtió al estilo de la v3.2.0: la app volvió, el número siguió subiendo.
+Bajarlo dejaría a un dispositivo con la versión "más nueva" ya cacheada sin forma de
+darse cuenta de que hay algo distinto.
+
 Aplica a cualquier app de este usuario, no solo a esta.
 
 ## Detalles menores
@@ -456,9 +424,7 @@ Aplica a cualquier app de este usuario, no solo a esta.
   textos de estado.
 - La semana arranca el lunes por defecto (`weekStart: 1`), configurable a domingo.
 - Los íconos son `#242424` con glifo blanco, para que combinen con la pantalla de inicio
-  del usuario. Si se rediseñan, mantener ese fondo y regenerar los cuatro tamaños. El
-  `manifest.json` y el `theme-color`, en cambio, van en negro: son el fondo de la pantalla
-  de arranque y de la barra de estado, y ahí lo que tiene que continuar es la app.
+  del usuario. Si se rediseñan, mantener ese fondo y regenerar los cuatro tamaños.
 - `manifest.json`, `sw.js` y los íconos van en la raíz del repo, junto a `index.html`.
 
 ## Al tocar el archivo
