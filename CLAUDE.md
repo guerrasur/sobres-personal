@@ -52,6 +52,10 @@ Todo lo demás —la semana, los días cerrados, el mes, el historial completo y
 ajustes— vive en la vista `Resumen`, a un toque de distancia (`setView`). Volver a meter
 tarjetas explicativas arriba del formulario es deshacer el rediseño.
 
+Abajo de la lista de las tres cosas, y **abajo del formulario**, va el bloque de exportar:
+el botón fijo y, una vez al mes, el aviso. Es lo único que se le suma a la pantalla, y va
+al final justamente para no competir con anotar (ver "Exportar").
+
 Anotar un gasto típico son **dos toques y nada de scroll**: tocar el monto, escribirlo,
 tocar Anotar. Por eso el monto va primero, la categoría son tres botones a la vista
 (vuelve sola a "Del día" después de anotar), la nota es opcional y va última, y la fecha
@@ -252,18 +256,54 @@ en la pantalla principal: no se usa todos los días y en el formulario de anotar
 por atención con el único botón que importa ahí, que es Anotar. Traerlo de vuelta al lado
 del monto es deshacer eso; la funcionalidad, en cambio, se queda.
 
-## El aviso de exportar
+## Exportar
 
-Al mes del primer gasto anotado, y después una vez por mes, la pantalla principal muestra
-un aviso —**nunca un popup**— que ofrece bajar el CSV y copiar el texto que se le pega a
-una IA junto con el archivo. Es lo único que la app dice sin que se le pregunte, y por eso
-va discreto y abajo del formulario: anotar un gasto sigue siendo lo primero que se puede
-hacer al abrir.
+Exportar no está escondido en Ajustes: abajo del formulario hay un botón fijo, **Exportar
+gastos**, que ve cualquiera desde el primer día. Es lo único que se le suma a las tres
+cosas de la pantalla principal, y va abajo del formulario justamente por eso: anotar un
+gasto sigue siendo lo primero que se puede hacer al abrir.
+
+Ese botón y el aviso del mes son **un solo bloque**, no dos cosas pegadas. Sin aviso es la
+fila del botón y nada más (la clase `.plain` le saca la caja); cuando el aviso corresponde,
+el mismo bloque crece con el título, la línea y el atajo para copiar el texto. Los tres
+botones que bajan el CSV —el fijo, el del aviso y el de Ajustes— pasan por `flujoExportar()`,
+que avisa si hace falta, baja el archivo y deja la tarjeta del texto para la IA al lado del
+botón que se tocó.
+
+El archivo lleva la fecha del día en que se bajó: `sobres-2026-08-19.csv`. Con un nombre
+fijo cada exportación pisaba a la anterior en la carpeta de descargas.
+
+### Lo que se avisa antes de bajar el archivo
+
+Es **sugerencia y nunca permiso**: los dos avisos traen "Exportar igual", los dos se
+cierran sin exportar y exportar no se bloquea jamás.
+
+- **Menos de 10 días con gastos**: con tan poco el análisis no sirve, mejor esperar a
+  tener unos 10. El número es el real y concuerda en singular ("con 1 día").
+- **10 o más, pero todavía no cerró un ciclo de cobro**: ya se puede, pero un ciclo entero
+  da un análisis mucho más certero.
+- **Ciclo cerrado**: sin aviso, baja derecho.
+
+Los días son los que tienen **al menos un gasto anotado** (`diasConGastos()`), nunca los
+días desde que se instaló la app: quien la abrió hace tres semanas y anotó cuatro gastos
+tiene cuatro días de datos, no veintiuno.
+
+El ciclo que se mira es el que contiene el **primer gasto** (`cicloCerrado()`): si hoy ya
+pasó su fin, adentro de los datos hay un ciclo entero de punta a punta. Mirar el ciclo en
+curso sería avisarle para siempre a alguien que hace tres meses usa la app, porque siempre
+está a mitad de uno. En modo `'manual'` y `'none'` no hay ciclo de cobro que esperar, así
+que ese aviso no aparece.
+
+### El aviso del mes
+
+Al mes del primer gasto anotado, y después una vez por mes, el bloque crece con un aviso
+—**nunca un popup**— que ofrece bajar el CSV y copiar el texto que se le pega a una IA
+junto con el archivo. Es lo único que la app dice sin que se le pregunte.
 
 Ocultarlo lo corre un mes, no lo apaga: `nudged` guarda la fecha en que se ocultó y el mes
-siguiente se cuenta desde ahí. Sin gastos anotados no aparece nunca, porque no hay nada
-que analizar. El texto que se copia es literal y está en `PROMPT_IA`: si se toca, se toca
-entero y a propósito.
+siguiente se cuenta desde ahí. Ocultarlo no se lleva el botón de exportar, que es fijo.
+Sin gastos anotados no aparece nunca, porque no hay nada que analizar. El texto que se
+copia es literal y está en `PROMPT_IA`: si se toca, se toca entero y a propósito.
 
 ## Claro y oscuro
 
