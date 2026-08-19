@@ -52,6 +52,10 @@ Todo lo demás —la semana, los días cerrados, el mes, el historial completo y
 ajustes— vive en la vista `Resumen`, a un toque de distancia (`setView`). Volver a meter
 tarjetas explicativas arriba del formulario es deshacer el rediseño.
 
+Pegado al número, abajo de "la cuenta", va un link chico para cargar la plata que hay
+ahora (ver "La plata que hay ahora"). Está ahí porque es lo que cambia ese número, y es un
+link y no una tarjeta: sin tocarlo, la pantalla sigue siendo la de siempre.
+
 Abajo de la lista de las tres cosas, y **abajo del formulario**, va el bloque de exportar:
 el botón fijo y, una vez al mes, el aviso. Es lo único que se le suma a la pantalla, y va
 al final justamente para no competir con anotar (ver "Exportar").
@@ -103,8 +107,9 @@ cortarse contra el ancho— cuánto se gastó de cuánto. Con eso alcanza; el p�
 explicaba el mecanismo se fue.
 
 `dailyMode` puede ser `'auto'`, `'manual'`, `'sueldo'` o `'none'`. En manual aparece la etiqueta ocre
-"a mano" al lado de "Queda hoy": nunca hay que dejar ambiguo de dónde sale el monto, pero
-tampoco hay que tratarlo como un estado a medio configurar. Cuando no hay con qué calcular
+"a mano" al lado de "Queda hoy", y "saldo" cuando rige la plata cargada a mano: nunca hay
+que dejar ambiguo de dónde sale el monto, pero tampoco hay que tratarlo como un estado a
+medio configurar. Cuando no hay con qué calcular
 (sin período, período vencido, sin ingresos) el diario **no** se inventa: se muestra "—" y
 una línea corta de qué falta, de una oración, nunca instrucciones.
 
@@ -165,6 +170,85 @@ En pantalla lo dice la etiqueta chica "parcial", la misma que usa "a mano".
 Si se toca "usar el sueldo igual" queda `first` con `amount:0`: el diario es el de un ciclo
 normal sobre los días que quedan, pero el ciclo **sigue marcado como parcial**, porque lo
 es. `first` deja de regir solo cuando pasa el próximo cobro; no se borra, queda de registro.
+
+## La plata que hay ahora
+
+Faltan seis días para cobrar y en el bolsillo quedan 90.000. El diario que sale de repartir
+el sueldo desde el arranque del ciclo ya no dice nada: lo que importa es que esos 90.000
+lleguen. Para eso, abajo del número grande hay un link chico —**reingresar lo que me
+queda**— que abre un panel de un solo campo.
+
+```json
+"saldo": { "date": "2026-09-12", "amount": 90000 }
+```
+
+Es una **foto**: el día `date` el usuario tenía `amount` para llegar al fin. **No es un
+ingreso más que se suma al tramo**: reemplaza de dónde sale el diario desde ese día. La app
+no lleva el saldo sola —seguiría sin ser una app de contabilidad—; para actualizarlo se
+vuelve a cargar, que es justamente la acción que ofrece el link.
+
+Rige mientras `date` caiga adentro del período que corre. Al pasar el cobro **deja de regir
+solo**, sin que nadie lo borre, y el ciclo siguiente vuelve al sueldo: la misma regla que
+`first`. Una fecha futura —puede llegar de otro dispositivo en una fusión— todavía no rige.
+
+### Por qué un campo nuevo y no `first`
+
+La cuenta es la misma que la del ciclo parcial de arranque —tanta plata, desde tal día,
+repartida entre los días que quedan— y por eso **las dos salen del mismo lugar** en
+`cicloCalc()`: `plata` y `repDesde` se calculan una vez y no importa de cuál de los dos
+vengan. Lo que no se puede es guardarlo en `first`:
+
+- `first` vive adentro de `salary`, que es `null` en modo `'auto'`. Quedarse sin cobrar
+  pasa en los dos modos.
+- `first` además **mueve el arranque del ciclo**, y de ahí sale el `periodo.start` que usan
+  `closeDays()` y el acumulado. En el arranque eso es correcto: antes no había nada
+  anotado. A mitad de camino sería un error — los días ya cerrados del ciclo quedarían
+  afuera del período y el resumen empezaría a contar desde hoy.
+- `first` significa "este ciclo no vale lo que uno entero". Cargar lo que queda no hace
+  parcial al ciclo.
+
+Por eso el saldo **sólo cambia de dónde sale la plata**: `start`, `pasados`, `faltan` y el
+cierre de días quedan intactos.
+
+### La cuenta, en cada modo
+
+Cada modo conserva su regla; lo único que se reemplaza es la plata:
+
+- **`'sueldo'`**: `diario = (saldo − transporte prorrateado) ÷ días desde el saldo hasta el
+  fin del ciclo`, fijo, y los "Aparte" posteriores lo bajan. Los anteriores no: esa plata
+  ya salió del bolsillo y el monto que cargó el usuario es lo que quedó después. El ahorro
+  prometido no aplica mientras rige el saldo — lo que hay es lo que hay.
+- **`'auto'`**: `pool = saldo − transporte prorrateado − aparte posteriores`, dividido por
+  los días que faltan, que es la regla del tramo. El ingreso del tramo queda guardado y sin
+  tocar. Con un saldo cargado hay diario **aunque nunca haya cargado los ingresos**: dijo
+  cuánta plata tiene, que es más concreto que lo que esperaba cobrar.
+- **`'manual'` y `'none'`**: el link no aparece. A mano el número lo fija el usuario y sin
+  límite no hay diario que reemplazar.
+
+El transporte se prorratea sobre los días que el saldo cubre, igual que en el ciclo
+parcial: el presupuesto del período es de punta a punta y lo de antes ya se gastó.
+
+### El panel
+
+Un solo campo y el efecto a la vista: mientras se escribe, la línea de abajo dice
+`$ 9.000 por día · 9 días hasta el 28/8`. Ese número **sale de la cuenta de verdad** —se
+prueba el saldo en el estado y se le pregunta el diario a `dailyInfo()`, sin guardar nada—,
+nunca de una fórmula repetida en el panel, que sería una copia que queda vieja.
+
+**Sumar plata que entró después (una changa) es la misma acción y el mismo campo.** Al
+abrir el panel con un saldo vigente, el campo llega con lo que la app calcula que quedó
+—el saldo menos todo lo anotado desde entonces, hoy incluido, de las tres categorías— y una
+línea que lo dice: "Cargaste $90.000 el 12/9 y desde entonces anotaste $34.000. Si entró
+plata extra, sumala." El usuario le suma los 20.000 y guarda. Un segundo modo "sumar" sería
+otro camino para el mismo número, y le pediría a la app que lleve un saldo vivo que no
+lleva.
+
+Guardar con el campo vacío no hace nada: no borra lo que ya había. Para volver al cálculo
+de siempre está el botón que borra la foto — no queda de registro, porque no hay nada que
+registrar: es un número que dictó el usuario, no algo que pasó.
+
+Al tocar el número, la cuenta lo explica entero: de dónde salió la plata, con qué fecha se
+cargó y que cuando cobre vuelve solo. El número tiene que poder auditarse desde la app.
 
 ## El modo sin límite
 
@@ -380,8 +464,9 @@ Permiso necesario en el token: **Gists: read and write**, nada más.
 El estado que se persiste (schema 6):
 
 ```json
-{ "schema": 6, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
+{ "schema": 7, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
   "setup": true, "nudged": "",
+  "saldo": { "date": "2026-09-12", "amount": 90000 },
   "salary": { "amount": 950000, "payday": 28, "mode": "ahorro", "target": 350000,
               "transport": 0,
               "first": { "start": "2026-08-28", "end": "2026-09-28",
@@ -405,14 +490,15 @@ La fusión entre dispositivos (`merge()`) sigue tres reglas, y están así a pro
    o sea nunca editados — se queda con el de este dispositivo.
 2. Los borrados se registran como lápidas en `deleted`. Sin eso, un gasto borrado en el
    celular revive en la próxima sincronización desde la computadora.
-3. La configuración (`daily`, `dailyMode`, `weekStart`, `periods`, `salary`) sí es
+3. La configuración (`daily`, `dailyMode`, `weekStart`, `periods`, `salary`, `saldo`) sí es
    último-en-escribir-gana, según `updatedAt`. `periods` y `salary` van enteros, no
    fusionados campo a campo: un período o un sueldo medio mezclado entre dos dispositivos
    daría un diario que no es el de ninguno de los dos.
 
-   `salary` es el único campo de ese grupo que puede valer `null`, así que va **sin `??`**:
-   con el operador, un dispositivo que escribió último y no usa el modo sueldo no podría
-   apagarlo y quedaría pegado un sueldo viejo que ya nadie eligió.
+   `salary` y `saldo` son los dos campos de ese grupo que pueden valer `null`, así que van
+   **sin `??`**: con el operador, un dispositivo que escribió último y no usa el modo
+   sueldo no podría apagarlo y quedaría pegado un sueldo viejo que ya nadie eligió; con el
+   saldo pasaría lo mismo al volver al cálculo de siempre.
 
 Los `closed` se unen por `date`, como los items: dos dispositivos sin conexión entre
 medio cerraron días distintos y los dos valen.
@@ -511,6 +597,11 @@ datos de uno actualizado; pisarlos es la forma más rápida de perderlos. La app
 Las migraciones son escalones encadenados: `if(from < 2) d = up1to2(d); if(from < 3) d =
 up2to3(d);`. Un schema 1 pasa por los dos de una y llega al formato actual. Al agregar un
 escalón nuevo, no tocar los anteriores.
+
+`up6to7` deja `saldo` en `null`: cuánta plata tiene el usuario en el bolsillo no se deduce
+de los gastos, y hasta que lo diga él el diario sigue saliendo de donde salía. `saldo` es
+un campo nuevo, y eso solo ya obliga a subir el schema — el `normalize()` viejo lo borraría
+y después lo subiría así al Gist.
 
 `up5to6` deja `salary` en `null`: el sueldo no se puede adivinar de los gastos y el modo
 que el usuario venía usando no se toca, así que quien tenía un diario fijo sigue igual

@@ -223,6 +223,12 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .caret[hidden]{display:none}
 
 /* la cuenta, solo cuando se toca el número */
+/* el link para recargar la plata, pegado al número: chico y sin caja */
+.saldo-row{margin-top:2px}
+.saldo-box{margin-top:12px}
+.saldo-box .num-in{font-size:20px;font-family:var(--mono);font-weight:700;padding:12px}
+.saldo-box .box-copy:empty{display:none}
+.saldo-what{margin:10px 0 0;color:var(--violet)}
 .why{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:8px 14px 14px;margin-top:12px}
 .why[hidden]{display:none}
 .why-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:5px 0;font-size:13px}
@@ -464,7 +470,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v4.5.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v4.6.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -488,6 +494,29 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
     <span class="hint" id="todayNote"></span>
     <span class="caret" id="todayCaret">▾ la cuenta</span>
   </button>
+
+  <!-- Cargar la plata que hay ahora, sin pasar por Ajustes: faltan días para
+       cobrar y lo que queda en el bolsillo no es el sueldo repartido desde el
+       principio. Va acá, pegado al número que cambia, y es un link chico —
+       abajo sigue el formulario, que es lo primero que se puede hacer. -->
+  <div class="saldo-row" id="saldoRow" hidden>
+    <button class="link" id="saldoLink" aria-expanded="false" aria-controls="saldoBox">reingresar lo que me queda</button>
+  </div>
+  <div class="box saldo-box" id="saldoBox" hidden>
+    <div class="box-head">
+      <span class="eyebrow" id="saldoTitle">¿Cuánta plata tenés ahora?</span>
+      <button class="link" id="saldoClose" aria-label="Cerrar">cerrar</button>
+    </div>
+    <p class="box-copy" id="saldoHint"></p>
+    <input class="num-in" id="saldoAmount" type="text" inputmode="numeric" placeholder="0"
+           aria-labelledby="saldoTitle">
+    <p class="box-copy saldo-what" id="saldoWhat"></p>
+    <div class="tools">
+      <button class="mini" id="saldoOk">Guardar</button>
+      <button class="ghost mini" id="saldoOff" hidden>Volver al cálculo de siempre</button>
+    </div>
+  </div>
+
   <div class="why" id="why" hidden></div>
 
   <div class="card" id="form">
@@ -750,7 +779,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <script>
 const KEY = 'sobres.v1';
-const SCHEMA = 6;
+const SCHEMA = 7;
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
 const plain = n => new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n||0);
 const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -833,6 +862,36 @@ function planDelCiclo(dias){
   return { diarioBase: Math.max(0, Math.floor(reparto/dias)), reparto, ahorro: s.target };
 }
 
+/* ---------- la plata que el usuario dice tener ----------
+   `saldo` es una foto: el día `date` tenía `amount` para llegar al fin del
+   período. No es un ingreso más que se suma a lo que cobró — reemplaza de
+   dónde sale la plata desde ese día, y nada más. La app no lleva la cuenta
+   sola: para actualizarla se vuelve a cargar, que es justamente la acción que
+   ofrece el link de abajo del número.
+
+   Rige mientras la fecha caiga adentro del período que corre. Al pasar el
+   cobro deja de regir solo, sin que nadie lo borre — la misma regla que
+   `first` —, así el ciclo siguiente vuelve al sueldo. Una fecha futura (puede
+   llegar de otro dispositivo en una fusión) todavía no rige. */
+function saldoDe(start, end){
+  const s = state.saldo;
+  if(!s || !s.date) return null;
+  return (s.date >= start && s.date < end && s.date <= todayISO()) ? s : null;
+}
+
+/* Lo que la app puede reconstruir de esa foto: el saldo menos todo lo anotado
+   desde que se cargó, hoy incluido. Sale del bolsillo lo de las tres
+   categorías, así que las tres restan. Es una sugerencia para el campo, nunca
+   un número que la app use para calcular: el saldo lo dice el usuario. */
+function saldoGastado(){
+  const s = state.saldo;
+  if(!s) return 0;
+  return state.items
+    .filter(x => x.date >= s.date && x.date <= todayISO())
+    .reduce((a,x)=>a+x.amount, 0);
+}
+const saldoRestante = () => Math.max(0, (state.saldo ? state.saldo.amount : 0) - saldoGastado());
+
 /* El diario del ciclo que contiene `fecha`.
 
    El sobre del ciclo es (sueldo − ahorro − transporte) repartido entre los días
@@ -859,14 +918,25 @@ function cicloCalc(fecha){
   const desde = parcial ? f.from : c.start;
   const dias = daysBetween(desde, c.end);
   const plan = planDelCiclo(total);
-  const transporte = parcial ? Math.round(s.transport * dias / total) : s.transport;
-  /* Sin saldo — tocó "usar el sueldo igual" — el diario es el de un ciclo
-     normal: los mismos pesos por día, sobre los días que quedan. */
-  const diarioBase = !parcial ? plan.diarioBase
-    : f.amount > 0 ? Math.max(0, Math.floor((f.amount - transporte)/dias))
+
+  /* El saldo cargado a mano pisa **de dónde sale la plata y desde qué día se
+     reparte**, y nada más: el ciclo sigue arrancando donde arrancaba, así los
+     días ya cerrados, el acumulado y la tira de la semana quedan donde están.
+     Es la cuenta del ciclo parcial de arranque con otro punto de partida —
+     misma fórmula, otro `desde` —, y por eso las dos salen de acá. */
+  const sal = saldoDe(desde, c.end);
+  const repDesde = sal ? sal.date : desde;
+  const repDias = daysBetween(repDesde, c.end);
+  const transporte = Math.round(s.transport * repDias / total);
+  /* La plata que reemplaza al sueldo: la del saldo, o la que había al
+     configurar un ciclo ya empezado. En cero — tocó "usar el sueldo igual" —
+     el diario es el de un ciclo normal: los mismos pesos por día. */
+  const plata = sal ? sal.amount : (parcial && f.amount > 0 ? f.amount : 0);
+  const diarioBase = plata > 0
+    ? Math.max(0, Math.floor((plata - transporte)/repDias))
     : plan.diarioBase;
 
-  const reparto = (!parcial || f.amount <= 0) ? plan.reparto : f.amount - transporte;
+  const reparto = plata > 0 ? plata - transporte : plan.reparto;
 
   const ref = fecha < desde ? desde : fecha;      /* ciclo futuro: cuenta entero */
   const pasados = Math.max(0, Math.min(dias, daysBetween(desde, ref)));
@@ -880,18 +950,25 @@ function cicloCalc(fecha){
 
      Así la cuenta cierra: si gasta el sobre todos los días, lo que sale del
      ciclo es exactamente lo que había para repartir, y el ahorro queda. */
-  const aparte = state.items.filter(x => x.cat==='unico' && x.date>=desde && x.date<c.end);
+  /* Los aparte anteriores al saldo no cuentan: esa plata ya salió del bolsillo
+     y el monto que cargó el usuario es lo que quedó después. */
+  const aparte = state.items.filter(x => x.cat==='unico' && x.date>=repDesde && x.date<c.end);
   const unico = aparte.reduce((a,x)=>a+x.amount, 0);
   const aparteDia = aparte.reduce((a,x)=>{
     /* uno cargado con fecha futura pesa desde hoy: ya se sabe que va a salir */
     const ini = x.date > ref ? ref : x.date;
-    const n = daysBetween(ini < desde ? desde : ini, c.end);
+    const n = daysBetween(ini < repDesde ? repDesde : ini, c.end);
     return a + (n > 0 ? Math.floor(x.amount/n) : x.amount);
   }, 0);
   return {
     start:desde, end:c.end, cicloStart:c.start, parcial, total, dias, pasados, faltan,
-    entra: parcial ? (f.amount > 0 ? f.amount : reparto + transporte) : s.amount,
-    ahorro: parcial ? 0 : plan.ahorro,
+    /* desde dónde y entre cuántos días se reparte la plata: con un saldo
+       cargado no son los del ciclo, y es lo que muestra la cuenta */
+    saldo:sal, repDesde, repDias,
+    entra: plata > 0 ? plata : (parcial ? reparto + transporte : s.amount),
+    /* Con la plata contada a mano no hay ahorro prometido que sostener: lo que
+       hay es lo que hay, y se reparte hasta el próximo cobro. */
+    ahorro: (parcial || sal) ? 0 : plan.ahorro,
     transporte, unico, aparteDia, reparto, diarioBase,
     diario: faltan > 0 ? Math.max(0, diarioBase - aparteDia) : 0,
     finished: faltan <= 0,
@@ -914,13 +991,15 @@ function cicloCalc(fecha){
              dailyMode: 'none', el modo sin límite diario.
    schema 6: agrega salary (sueldo, día de cobro, qué fija el usuario y el ciclo
              parcial de arranque) y un cuarto valor para dailyMode: 'sueldo'.
+   schema 7: agrega saldo, la plata que el usuario dice que tiene ahora, con el
+             día en que la cargó.
    migrate() es la única puerta de entrada: localStorage, Gist y respaldos
    importados pasan por acá. Si el dato viene de un schema más nuevo que el
    que entiende esta copia de la app, no se toca: se avisa y listo. */
 
 function blankState(){
   return { schema:SCHEMA, daily:10000, dailyMode:'manual', weekStart:1,
-           setup:false, nudged:'', salary:null,
+           setup:false, nudged:'', salary:null, saldo:null,
            periods:[], closed:[], deleted:[], updatedAt:0, items:[] };
 }
 
@@ -935,6 +1014,7 @@ function migrate(raw){
   if(from < 4) d = up3to4(d);
   if(from < 5) d = up4to5(d);
   if(from < 6) d = up5to6(d);
+  if(from < 7) d = up6to7(d);
   return {ok:true, from, migrated:from < SCHEMA, state:normalize(d)};
 }
 
@@ -983,6 +1063,13 @@ function up5to6(d){
   return { ...d, schema:6, salary:null };
 }
 
+/* `saldo:null`: cuánta plata tiene el usuario en el bolsillo no se deduce de
+   los gastos, y mientras no lo diga él el diario sigue saliendo de donde salía.
+   El criterio de siempre: nunca completar con datos que el usuario no cargó. */
+function up6to7(d){
+  return { ...d, schema:7, saldo:null };
+}
+
 /* El sueldo se reconstruye campo por campo, como todo lo demás. Si viene roto o
    a medias queda en null, y ahí el modo sueldo muestra "—" con una línea de qué
    falta en vez de inventar un número. */
@@ -1000,6 +1087,13 @@ function normSalary(s){
           from:String(f.from).slice(0,10), amount:Math.max(0, int(f.amount)) }
       : null
   };
+}
+
+/* La plata que el usuario dijo tener, con el día en que lo dijo. Sin fecha no
+   hay desde cuándo repartirla, así que queda en null. */
+function normSaldo(s){
+  if(!s || typeof s !== 'object' || Array.isArray(s) || !s.date) return null;
+  return { date:String(s.date).slice(0,10), amount:Math.max(0, int(s.amount)) };
 }
 
 function normalize(d){
@@ -1025,6 +1119,7 @@ function normalize(d){
     setup: !!d.setup,
     nudged: d.nudged ? String(d.nudged).slice(0,10) : '',
     salary: normSalary(d.salary),
+    saldo: normSaldo(d.saldo),
     periods,
     closed: (Array.isArray(d.closed) ? d.closed : [])
       .filter(c => c && c.date)
@@ -1125,20 +1220,30 @@ function currentPeriod(){
       || ps[0];
 }
 
-/* (ingresos − transporte presupuestado − únicos ya hechos) ÷ días que faltan */
+/* (ingresos − transporte presupuestado − únicos ya hechos) ÷ días que faltan
+
+   Con un saldo cargado la plata no sale de lo que cobró sino de lo que dijo
+   tener, y todo lo anterior a esa fecha queda afuera: el transporte que falta
+   se prorratea sobre los días que cubre y los aparte de antes ya salieron de
+   ese bolsillo. La regla del tramo —repartir entre los días que faltan— no
+   cambia; cambia de dónde sale la plata. */
 function periodCalc(p){
   if(!p) return null;
   const t = todayISO();
   const income = p.incomes.reduce((s,i)=>s+i.amount, 0);
-  const transport = p.transport;
+  const total = daysBetween(p.start, p.end);
+  const saldo = saldoDe(p.start, p.end);
+  const desde = saldo ? saldo.date : p.start;
+  const transport = saldo
+    ? Math.round(p.transport * daysBetween(saldo.date, p.end) / total)
+    : p.transport;
   const unico = state.items
-    .filter(x => x.cat==='unico' && x.date>=p.start && x.date<p.end)
+    .filter(x => x.cat==='unico' && x.date>=desde && x.date<p.end)
     .reduce((s,x)=>s+x.amount, 0);
-  const pool = income - transport - unico;
+  const pool = (saldo ? saldo.amount : income) - transport - unico;
   const from = t < p.start ? p.start : t;          /* período futuro: cuenta entero */
   const days = daysBetween(from, p.end);           /* hoy cuenta, el día de fin no */
-  const total = daysBetween(p.start, p.end);
-  return { income, transport, unico, pool, days, total, from, last: addMonths(p.end,0),
+  return { income, transport, unico, pool, days, total, from, saldo, last: addMonths(p.end,0),
            finished: days <= 0, daily: days > 0 ? Math.max(0, Math.floor(pool/days)) : 0 };
 }
 
@@ -1158,7 +1263,9 @@ function dailyInfo(){
   /* Sin límite: no hay sobre diario, así que no hay número que calcular ni día
      que cerrar. `p:null` apaga solo la semana y el sobrante del período. */
   if(state.dailyMode === 'none') return { daily:0, ready:false, none:true, manual:false, p:null, calc:null };
-  if(state.dailyMode === 'manual') return { daily:state.daily, ready:true, manual:true, p, calc };
+  /* A mano el número lo fija el usuario: un saldo no lo pisa, y por eso el link
+     para cargarlo tampoco aparece en este modo. */
+  if(state.dailyMode === 'manual') return { daily:state.daily, ready:true, manual:true, p, calc, saldo:null };
   /* De cobro a cobro. El diario sale del ciclo derivado, no de un tramo cargado
      a mano: `p` es el ciclo, con la forma de siempre. */
   if(state.dailyMode === 'sueldo'){
@@ -1167,12 +1274,15 @@ function dailyInfo(){
       why:'Falta cargar el sueldo y el día en que cobrás.' };
     if(ciclo.finished) return { daily:0, ready:false, manual:false, p, calc:null, ciclo,
       why:`Se terminó el ciclo el ${dm(ciclo.end)}.` };
-    return { daily:ciclo.diario, ready:true, manual:false, p, calc:null, ciclo };
+    return { daily:ciclo.diario, ready:true, manual:false, p, calc:null, ciclo, saldo:ciclo.saldo };
   }
   if(!p) return { daily:0, ready:false, manual:false, p, calc, why:'Todavía no cargaste de qué cobro a qué cobro.' };
   if(calc.finished) return { daily:0, ready:false, manual:false, p, calc, why:`Se terminó el tramo el ${dm(p.end)}.` };
-  if(!p.incomes.length) return { daily:0, ready:false, manual:false, p, calc, why:'Falta cargar lo que cobrás en este tramo.' };
-  return { daily:calc.daily, ready:true, manual:false, p, calc };
+  /* Con un saldo cargado ya hay de dónde sacar el diario, aunque nunca haya
+     cargado los ingresos del tramo: dijo cuánta plata tiene, que es más
+     concreto que lo que esperaba cobrar. */
+  if(!p.incomes.length && !calc.saldo) return { daily:0, ready:false, manual:false, p, calc, why:'Falta cargar lo que cobrás en este tramo.' };
+  return { daily:calc.daily, ready:true, manual:false, p, calc, saldo:calc.saldo };
 }
 
 /* ---------- cierre del día ----------
@@ -1296,6 +1406,7 @@ function render(){
   const info = dailyInfo();
   renderToday(info);
   renderWhy(info);
+  renderSaldo(info);
   renderWeek(info);
   renderTally(info);
   renderMonth(today);
@@ -1329,8 +1440,8 @@ function renderToday(info){
      usuario, y "parcial" es el ciclo de arranque, que no vale lo que uno entero. */
   const badge = document.getElementById('dailyBadge');
   const parcial = !!(info.ciclo && info.ciclo.parcial);
-  badge.hidden = !info.manual && !parcial;
-  badge.textContent = info.manual ? 'a mano' : 'parcial';
+  badge.hidden = !info.manual && !parcial && !info.saldo;
+  badge.textContent = info.saldo ? 'saldo' : info.manual ? 'a mano' : 'parcial';
   document.getElementById('todayLabel').textContent = info.none ? 'Gastaste hoy' : 'Queda hoy';
   /* Sin límite no hay cuenta que abrir: el número es la suma de lo anotado. */
   caret.hidden = !!info.none;
@@ -1378,12 +1489,13 @@ function renderWhy(info){
     rows.push(r('Lo fijaste vos', fmt(state.daily), 'mid'));
   }else if(info.ciclo){
     const k = info.ciclo;
-    rows.push(r(k.parcial ? 'La plata que tenías' : 'Sueldo del mes', '+ ' + fmt(k.entra)));
+    rows.push(r(k.saldo ? `La plata que cargaste el ${dm(k.saldo.date)}`
+              : k.parcial ? 'La plata que tenías' : 'Sueldo del mes', '+ ' + fmt(k.entra)));
     if(k.ahorro > 0) rows.push(r('Lo que querés ahorrar', '− ' + fmt(k.ahorro)));
     if(k.transporte > 0) rows.push(r('Transporte', '− ' + fmt(k.transporte)));
     /* Sin ahorro ni transporte, "A repartir" repetiría el renglón de arriba */
     if(k.ahorro > 0 || k.transporte > 0) rows.push(r('A repartir', fmt(k.reparto), 'sum'));
-    rows.push(`<div class="why-div">÷ ${k.dias} ${k.dias===1?'día':'días'} · del ${dm(k.start)} al ${dm(k.end)}, sin contar ese último</div>`);
+    rows.push(`<div class="why-div">÷ ${k.repDias} ${k.repDias===1?'día':'días'} · del ${dm(k.repDesde)} al ${dm(k.end)}, sin contar ese último</div>`);
     rows.push(r('Por día', fmt(k.diarioBase), k.aparteDia ? '' : 'mid'));
     if(k.aparteDia){
       rows.push(r(`Gastos aparte (${fmt(k.unico)}), por día`, '− ' + fmt(k.aparteDia)));
@@ -1391,6 +1503,8 @@ function renderWhy(info){
     }
     if(k.ahorro < 0)
       rows.push(`<div class="why-note">Gastando eso por día no llegás al fin del ciclo: te faltan ${esc(fmt(-k.ahorro))}.</div>`);
+    else if(k.saldo)
+      rows.push(`<div class="why-note">Va con la plata que cargaste el ${esc(dm(k.saldo.date))}, no con el sueldo del ciclo. Cuando cobres vuelve solo.</div>`);
     else if(k.parcial)
       rows.push(`<div class="why-note">Este ciclo arrancó el ${esc(dm(k.cicloStart))} y lo configuraste el ${esc(dm(k.start))}: va con la plata que tenías, no con el sueldo entero. El que viene ya va normal.</div>`);
     else if(info.daily <= 0)
@@ -1398,13 +1512,16 @@ function renderWhy(info){
   }else if(!c){
     rows.push(`<div class="why-note">${esc(info.why||'')}</div>`);
   }else{
-    rows.push(r(`Lo que cobrás en el tramo (${p.incomes.length})`, '+ ' + fmt(c.income)));
+    rows.push(c.saldo
+      ? r(`La plata que cargaste el ${dm(c.saldo.date)}`, '+ ' + fmt(c.saldo.amount))
+      : r(`Lo que cobrás en el tramo (${p.incomes.length})`, '+ ' + fmt(c.income)));
     rows.push(r('Transporte', '− ' + fmt(c.transport)));
     rows.push(r('Gastos aparte', '− ' + fmt(c.unico)));
     rows.push(r('A repartir', fmt(c.pool), 'sum'));
     rows.push(`<div class="why-div">÷ ${c.days} ${c.days===1?'día':'días'} · del ${dm(c.from)} al ${dm(p.end)}, sin contar ese último</div>`);
     rows.push(r('Por día', info.ready ? fmt(info.daily) : '—', 'mid'));
     if(!info.ready) rows.push(`<div class="why-note">${esc(info.why||'')}</div>`);
+    else if(c.saldo) rows.push(`<div class="why-note">Va con la plata que cargaste el ${esc(dm(c.saldo.date))}, no con lo que cobrás en el tramo. Cuando arranque el tramo siguiente vuelve solo.</div>`);
     else if(c.pool <= 0) rows.push(`<div class="why-note">Los gastos aparte y el transporte se comieron todo lo que entró.</div>`);
   }
 
@@ -1735,6 +1852,88 @@ function deshacerBorrado(){
 document.getElementById('undoBtn').onclick = deshacerBorrado;
 document.getElementById('amount').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('add').click(); });
 document.getElementById('note').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('add').click(); });
+
+/* ---------- la plata que hay ahora ----------
+   Un link chico abajo del número y un panel con un solo campo: cuánta plata
+   tenés. No es un ingreso más que se suma al tramo — reemplaza de dónde sale
+   el diario desde hoy hasta el próximo cobro.
+
+   Sumar plata que entró después (una changa) es la misma acción y el mismo
+   campo: el panel llega con lo que la app calcula que te queda y el usuario le
+   suma lo que entró. Un segundo modo "sumar" sería otro camino para el mismo
+   número, y la app no lleva el saldo sola: lo dice el usuario. */
+let saldoAbierto = false;
+
+/* El efecto se calcula con la cuenta de verdad —se prueba el saldo en el estado
+   y se pregunta el diario—, en vez de repetir la fórmula acá: una segunda copia
+   de la cuenta es una que queda vieja. No se guarda nada. */
+function saldoPrueba(monto){
+  const previo = state.saldo;
+  state.saldo = { date: todayISO(), amount: monto };
+  try{ return dailyInfo(); } finally{ state.saldo = previo; }
+}
+
+function saldoEfecto(){
+  const el = document.getElementById('saldoWhat');
+  const v = document.getElementById('saldoAmount').value.trim();
+  if(v === ''){ el.textContent = ''; return; }
+  const info = saldoPrueba(Math.max(0, parseNum(v)));
+  const dias = info.p ? daysBetween(todayISO(), info.p.end) : 0;
+  /* Nadie elige a ciegas: el número que va a quedar se ve antes de confirmar. */
+  el.textContent = info.ready && dias > 0
+    ? `${fmt(info.daily)} por día · ${dias} ${dias===1?'día':'días'} hasta el ${dm(info.p.end)}`
+    : '';
+}
+
+/* El link sólo donde hay un diario calculado que reemplazar: a mano lo fija el
+   usuario y sin límite no hay diario. */
+function renderSaldo(info){
+  const modo = state.dailyMode === 'auto' || state.dailyMode === 'sueldo';
+  const puede = modo && !blocked && !!info.p && todayISO() < info.p.end;
+  if(!puede) saldoAbierto = false;
+  document.getElementById('saldoRow').hidden = !puede;
+  document.getElementById('saldoBox').hidden = !saldoAbierto;
+  const link = document.getElementById('saldoLink');
+  link.setAttribute('aria-expanded', String(saldoAbierto));
+  link.textContent = info.saldo ? 'cambiar lo que me queda' : 'reingresar lo que me queda';
+  if(!saldoAbierto) return;
+  document.getElementById('saldoOff').hidden = !info.saldo;
+  document.getElementById('saldoHint').textContent = info.saldo
+    ? `Cargaste ${fmt(info.saldo.amount)} el ${dm(info.saldo.date)} y desde entonces anotaste ${fmt(saldoGastado())}. Si entró plata extra, sumala.`
+    : `Se reparte entre hoy y el ${dm(info.p.end)}, y desde hoy el diario sale de ahí.`;
+  saldoEfecto();
+}
+
+/* scrollIntoView y nunca focus(): en iOS el foco programático no levanta el
+   teclado y deja el campo activo de mentira. Ver CLAUDE.md. */
+document.getElementById('saldoLink').onclick = () => {
+  if(saldoAbierto){ saldoAbierto = false; render(); return; }
+  const info = dailyInfo();
+  /* Llega con lo que la app calcula que quedó de la última carga, para que
+     sumarle una changa sea escribir un número y nada más. */
+  document.getElementById('saldoAmount').value = info.saldo ? plain(saldoRestante()) : '';
+  saldoAbierto = true;
+  render();
+  document.getElementById('saldoBox').scrollIntoView({ behavior:'smooth', block:'nearest' });
+};
+document.getElementById('saldoClose').onclick = () => { saldoAbierto = false; render(); };
+document.getElementById('saldoAmount').addEventListener('input', saldoEfecto);
+document.getElementById('saldoAmount').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') document.getElementById('saldoOk').click();
+});
+milesInput(document.getElementById('saldoAmount'));
+document.getElementById('saldoOk').onclick = () => {
+  const el = document.getElementById('saldoAmount');
+  if(el.value.trim() === '') return;      /* vacío no borra lo que ya había */
+  state.saldo = { date: todayISO(), amount: Math.max(0, parseNum(el.value)) };
+  saldoAbierto = false;
+  save(); render();
+};
+/* Se vuelve al cálculo de siempre borrando la foto: no queda de registro,
+   porque no hay nada que registrar — es un número que el usuario dictó. */
+document.getElementById('saldoOff').onclick = () => {
+  state.saldo = null; saldoAbierto = false; save(); render();
+};
 
 /* La única explicación de dónde sale el número aparece al tocarlo. */
 document.getElementById('todayBtn').onclick = () => {
@@ -2292,6 +2491,10 @@ function merge(remote){
        y con `??` un dispositivo que escribió último y no usa el modo sueldo no
        podría apagarlo — se quedaría pegado un sueldo viejo que ya nadie eligió. */
     salary: remoteNewer ? (remote.salary || null) : state.salary,
+    /* El saldo va con la configuración y por la misma razón que el sueldo va
+       sin `??`: puede valer null, y el dispositivo que escribió último tiene
+       que poder apagarlo en vez de quedarse pegado a una foto vieja. */
+    saldo: remoteNewer ? (remote.saldo || null) : state.saldo,
     /* Estos dos no son configuración que se pisa: si de algún lado ya se eligió
        cómo usar la app, se eligió, y el aviso de exportar se queda con la fecha
        más nueva para no reaparecer en el dispositivo que ya lo ocultó. */
