@@ -258,9 +258,9 @@ que queda y pasa a ser **lo gastado hoy**, y desaparecen el sobre diario, la bar
 proporción, la cuenta que se abre al tocar el número, la tira semanal, el sobrante del
 período y los tramos con sus ingresos, que no se piden ni se muestran.
 
-Ahí "gastado hoy" es **todo lo anotado hoy** (`totalOn`), no sólo `diario` (`spentOn`).
-Sin sobre no hay tres bolsillos de los que salga cada cosa: separar el transporte del
-resto en ese número sería contar mal. Las categorías siguen existiendo y siguen separando
+Ahí "gastado hoy" es **todo lo anotado hoy** (`totalOn`), no sólo `diario` (`spentOn`),
+y los ahorros también. Sin sobre no hay bolsillos distintos de los que salga cada cosa:
+separar el transporte del resto en ese número sería contar mal. Las categorías siguen existiendo y siguen separando
 los totales del mes, que es donde ganan algo.
 
 `dailyInfo()` devuelve `ready:false` en este modo, así que `closeDays()` no cierra ni un
@@ -314,7 +314,7 @@ true, queda en true.
 **Una instalación nueva arranca vacía.** Los gastos de ejemplo que había cableados en
 `seed()` se fueron: le aparecían como propios a cualquiera que abriera la app.
 
-Las tres categorías no son decorativas, cada una sale de un bolsillo distinto. Adentro
+Las cuatro categorías no son decorativas, cada una sale de un bolsillo distinto. Adentro
 del código se llaman como siempre; en pantalla van con el nombre de la derecha, que se
 entiende sin saber cómo está hecha la app:
 
@@ -326,6 +326,32 @@ entiende sin saber cómo está hecha la app:
 - `unico` → **"Aparte"**. Compras puntuales que no deben romper el día (un cargador, un
   repuesto). No salen del sobre de hoy, pero sí bajan el diario de todos los días que
   quedan.
+- `ahorro` → **"Ahorros"**. Lo que se pagó con plata que **no es la del período** — una
+  compra grande con ahorros. Ver abajo.
+
+### Los ahorros: plata que salió y no era de este período
+
+Sin esta categoría, una compu de 1.000.000 anotada como "Aparte" contra un sueldo de
+850.000 deja el diario en cero y la app deja de servir para lo único que hace. Y no es un
+caso raro: cualquiera que se compre algo con ahorros rompe el cálculo del mes.
+
+`ahorro` es el único gasto que **no mueve ningún número del sobre**: no consume el sobre de
+hoy (`spentOn` sigue mirando sólo `diario`), no baja el diario (`periodCalc` y `cicloCalc`
+filtran `unico` y nada más) y no descuenta del saldo del bolsillo (`saldoGastado` lo saltea:
+esa plata no salió de ahí). Sí cuenta como plata que salió: entra en `totalOn`, tiene su
+casilla en "Este mes" y **suma en el Total**. La verdad pesa más que el presupuesto — lo
+que no hace es castigar el día.
+
+Por eso es la única categoría sin acento: va en `--slate`, apagada. Con violeta, verde u
+ocre parecería que pesa como las otras tres.
+
+Es una **categoría y no un interruptor** adentro de "Aparte" porque elegir categoría es un
+toque que el usuario da igual: un cuarto botón no cuesta ningún toque de más, y escondido
+en un link no lo encontraría nadie. Los rótulos se achican en pantallas angostas
+(`max-width:370px`) en vez de acortarse: "Transp." no lo lee nadie.
+
+**Cuál de los gastos viejos salió de ahorros lo sabe el usuario y nadie más**: `up7to8` no
+reclasifica nada. Adivinarlo por el monto le cambiaría el diario de meses enteros.
 
 El mismo criterio vale para el resto de los rótulos: "sobrante del período", "sobres
 diarios", "sale de", "únicos" son términos internos. En Ajustes, el período se llama
@@ -387,7 +413,9 @@ junto con el archivo. Es lo único que la app dice sin que se le pregunte.
 Ocultarlo lo corre un mes, no lo apaga: `nudged` guarda la fecha en que se ocultó y el mes
 siguiente se cuenta desde ahí. Ocultarlo no se lleva el botón de exportar, que es fijo.
 Sin gastos anotados no aparece nunca, porque no hay nada que analizar. El texto que se
-copia es literal y está en `PROMPT_IA`: si se toca, se toca entero y a propósito.
+copia es literal y está en `PROMPT_IA`: si se toca, se toca entero y a propósito. Ahí se le
+explican las cuatro categorías, y en particular que los `ahorro` no son gasto corriente:
+sin esa línea, una compra grande con ahorros le arruina el promedio por día a la IA.
 
 ## Claro y oscuro
 
@@ -464,7 +492,7 @@ Permiso necesario en el token: **Gists: read and write**, nada más.
 El estado que se persiste (schema 6):
 
 ```json
-{ "schema": 7, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
+{ "schema": 8, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
   "setup": true, "nudged": "",
   "saldo": { "date": "2026-09-12", "amount": 90000 },
   "salary": { "amount": 950000, "payday": 28, "mode": "ahorro", "target": 350000,
@@ -598,6 +626,12 @@ Las migraciones son escalones encadenados: `if(from < 2) d = up1to2(d); if(from 
 up2to3(d);`. Un schema 1 pasa por los dos de una y llega al formato actual. Al agregar un
 escalón nuevo, no tocar los anteriores.
 
+`up7to8` no toca un solo gasto: la categoría `ahorro` es nueva, pero cuál de los que ya
+están anotados salió de ahorros no se puede deducir. El escalón existe igual porque un
+valor nuevo en `cat` obliga a subir el schema — el `normalize()` viejo colapsaría `ahorro`
+a `diario`, y ahí el gasto pasaría a **comerse el sobre del día** en vez de no tocar nada.
+Bloquear la versión vieja es mejor que eso.
+
 `up6to7` deja `saldo` en `null`: cuánta plata tiene el usuario en el bolsillo no se deduce
 de los gastos, y hasta que lo diga él el diario sigue saliendo de donde salía. `saldo` es
 un campo nuevo, y eso solo ya obliga a subir el schema — el `normalize()` viejo lo borraría
@@ -626,9 +660,9 @@ nuevos no ignora lo que no conoce: lo borra, y después lo sube así al Gist. Su
 número hace que esa versión se bloquee en vez de destruir el campo.
 
 **Un valor nuevo en un campo que ya existe cuenta igual.** `dailyMode:'none'` obligó a
-subir a 5 aunque el campo estuviera desde el 2, y `dailyMode:'sueldo'` a 6: el
-`normalize()` viejo los colapsaba a `'manual'` y le devolvía al usuario un sobre diario
-que nunca pidió.
+subir a 5 aunque el campo estuviera desde el 2, `dailyMode:'sueldo'` a 6 y `cat:'ahorro'`
+a 8: el `normalize()` viejo los colapsaba a `'manual'` y a `'diario'`, y le devolvía al
+usuario un sobre diario que nunca pidió.
 
 La migración baja a disco con `save(false)`. Con `save()` a secas, un dispositivo que
 abre con datos viejos marcaría `updatedAt` a ahora y le ganaría la configuración al que
