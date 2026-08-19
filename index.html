@@ -14,23 +14,126 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Sobres">
+<script>
+/* Esto va acá arriba, separado del resto del JS, a propósito: tiene que correr
+   antes del primer pintado. Si esperara al final del body, alguien con el tema
+   oscuro fijado a mano vería un flash claro cada vez que abre la app. En
+   automático no hace falta — de eso se encarga el media query del CSS —, pero
+   el color de la barra de estado sí se resuelve acá en los dos casos. */
+try{
+  var t = localStorage.getItem('sobres.tema');
+  if(t === 'claro' || t === 'oscuro') document.documentElement.setAttribute('data-theme', t);
+  var oscuro = t === 'oscuro' ||
+    (t !== 'claro' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name="theme-color"]').content = oscuro ? '#242424' : '#E9E6EF';
+}catch(e){}
+</script>
 <style>
+/* Dos temas. El claro es el de siempre; el oscuro arranca del fondo del ícono
+   (#242424) para que la app y el ícono de la pantalla de inicio sean del mismo
+   color. Los acentos se aclaran: el violeta de 4B2FA0 sobre #242424 no se lee.
+
+   Todo color vive acá arriba. Si hace falta un tono nuevo en una regla, se
+   agrega como variable y se define en los dos temas — un rgba() suelto en una
+   regla queda igual en oscuro y desaparece contra el fondo.
+
+   Las tres reglas de abajo tienen que decir lo mismo: `:root` es el tema claro,
+   el bloque del media query es "el dispositivo está en oscuro y el usuario no
+   pidió claro", y `[data-theme="oscuro"]` es la elección a mano. Al tocar una
+   se tocan las dos que definen el oscuro. */
 :root{
+  color-scheme:light;
   --paper:#E9E6EF;
   --paper-2:#F5F3F8;
+  --field:#fff;
   --ink:#221C33;
   --ink-soft:#5B5470;
   --violet:#4B2FA0;
   --teal:#0F6E63;
   --ochre:#B86A12;
   --clay:#9E2F27;
+  --on-accent:#fff;        /* texto arriba de un botón lleno */
   --line:rgba(34,28,51,.14);
+  --track:rgba(34,28,51,.10);
+  --disabled:rgba(34,28,51,.05);
+  --overlay:rgba(34,28,51,.55);
+  --tap:rgba(75,47,160,.14);
+  --fill-op:.16;           /* cuánto se nota el sobre lleno de la semana */
+  --violet-soft:rgba(75,47,160,.12);
+  --violet-line:rgba(75,47,160,.28);
+  --violet-ghost:rgba(75,47,160,.06);
+  --teal-soft:rgba(15,110,99,.13);
+  --teal-line:rgba(15,110,99,.34);
+  --ochre-soft:rgba(184,106,18,.15);
+  --ochre-ghost:rgba(184,106,18,.06);
+  --clay-soft:rgba(158,47,39,.10);
+  --clay-line:rgba(158,47,39,.30);
   --radius:3px;
   /* Tipografías del sistema: la app tiene que verse igual de bien sin red, y
      en el subte no hay a quién pedirle un woff2. Ver CLAUDE.md. */
   --sans:-apple-system,BlinkMacSystemFont,'Segoe UI Variable Text','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
   --display:-apple-system,BlinkMacSystemFont,'Segoe UI Variable Display','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
   --mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono','DejaVu Sans Mono',monospace;
+}
+/* el dispositivo en oscuro, salvo que el usuario haya pedido claro */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="claro"]){
+  color-scheme:dark;
+  --paper:#242424;         /* el fondo del ícono */
+  --paper-2:#2E2D31;
+  --field:#1E1D21;
+  --ink:#F1EFF5;
+  --ink-soft:#A6A1B2;
+  --violet:#B49BFF;
+  --teal:#48C7B0;
+  --ochre:#E0A64A;
+  --clay:#F0817A;
+  --on-accent:#1C1630;
+  --line:rgba(255,255,255,.15);
+  --track:rgba(255,255,255,.12);
+  --disabled:rgba(255,255,255,.06);
+  --overlay:rgba(0,0,0,.66);
+  --tap:rgba(180,155,255,.18);
+  --fill-op:.24;
+  --violet-soft:rgba(180,155,255,.16);
+  --violet-line:rgba(180,155,255,.42);
+  --violet-ghost:rgba(180,155,255,.10);
+  --teal-soft:rgba(72,199,176,.16);
+  --teal-line:rgba(72,199,176,.42);
+  --ochre-soft:rgba(224,166,74,.16);
+  --ochre-ghost:rgba(224,166,74,.09);
+  --clay-soft:rgba(240,129,122,.15);
+  --clay-line:rgba(240,129,122,.42);
+  }
+}
+/* elegido a mano en Ajustes: le gana al dispositivo */
+:root[data-theme="oscuro"]{
+  color-scheme:dark;
+  --paper:#242424;         /* el fondo del ícono */
+  --paper-2:#2E2D31;
+  --field:#1E1D21;
+  --ink:#F1EFF5;
+  --ink-soft:#A6A1B2;
+  --violet:#B49BFF;
+  --teal:#48C7B0;
+  --ochre:#E0A64A;
+  --clay:#F0817A;
+  --on-accent:#1C1630;
+  --line:rgba(255,255,255,.15);
+  --track:rgba(255,255,255,.12);
+  --disabled:rgba(255,255,255,.06);
+  --overlay:rgba(0,0,0,.66);
+  --tap:rgba(180,155,255,.18);
+  --fill-op:.24;
+  --violet-soft:rgba(180,155,255,.16);
+  --violet-line:rgba(180,155,255,.42);
+  --violet-ghost:rgba(180,155,255,.10);
+  --teal-soft:rgba(72,199,176,.16);
+  --teal-line:rgba(72,199,176,.42);
+  --ochre-soft:rgba(224,166,74,.16);
+  --ochre-ghost:rgba(224,166,74,.09);
+  --clay-soft:rgba(240,129,122,.15);
+  --clay-line:rgba(240,129,122,.42);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -61,7 +164,7 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .tab{background:var(--paper-2);color:var(--ink-soft);border:none;border-radius:0;padding:8px 15px;font-size:13px;font-weight:600;touch-action:manipulation}
 .tab+.tab{border-left:1px solid var(--line)}
 .tab:hover{opacity:1}
-.tab.on{background:var(--violet);color:#fff}
+.tab.on{background:var(--violet);color:var(--on-accent)}
 .view{display:block}
 .view[hidden]{display:none}
 
@@ -69,9 +172,9 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .netbar{
   display:inline-block;margin-top:12px;padding:6px 11px;border-radius:2px;
   font-size:12px;font-weight:600;letter-spacing:.01em;
-  background:rgba(75,47,160,.11);color:var(--violet);border:1px solid rgba(75,47,160,.28);
+  background:var(--violet-soft);color:var(--violet);border:1px solid var(--violet-line);
 }
-.netbar.err{background:rgba(158,47,39,.10);color:var(--clay);border-color:rgba(158,47,39,.3)}
+.netbar.err{background:var(--clay-soft);color:var(--clay);border-color:var(--clay-line)}
 /* display: explícito le gana a [hidden] del navegador, y el cartel no se
    podría esconder nunca. */
 .netbar[hidden],.update[hidden]{display:none}
@@ -80,13 +183,13 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .update{
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;
   padding:11px 14px;border-radius:var(--radius);font-size:13px;
-  background:rgba(15,110,99,.10);border:1px solid rgba(15,110,99,.34);
+  background:var(--teal-soft);border:1px solid var(--teal-line);
 }
 .update button{background:var(--teal);border-color:var(--teal);margin-left:auto}
 
 /* aviso de formato */
 .notice{
-  background:rgba(184,106,18,.14);border:1px solid var(--ochre);
+  background:var(--ochre-soft);border:1px solid var(--ochre);
   border-radius:var(--radius);padding:13px 15px;font-size:13px;margin-top:20px;max-width:62ch;
 }
 .notice b{font-weight:700}
@@ -101,14 +204,14 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .today:hover{opacity:1}
 .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
 .today .eyebrow{display:flex;align-items:center;gap:8px}
-.mode{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:2px 6px;border-radius:2px;background:rgba(184,106,18,.16);color:var(--ochre)}
+.mode{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:2px 6px;border-radius:2px;background:var(--ochre-soft);color:var(--ochre)}
 .mode[hidden]{display:none}
 .big{display:block;font-family:var(--mono);font-size:54px;font-weight:700;letter-spacing:-.03em;line-height:1;margin:8px 0 0}
 .big.ok{color:var(--teal)} .big.warn{color:var(--ochre)} .big.over{color:var(--clay)} .big.idle{color:var(--ink-soft)}
 /* sin límite: lo gastado no es bueno ni malo, es lo que es */
 .big.plain{color:var(--ink)}
 /* la proporción del día, sin repetir el número */
-.bar{display:block;height:5px;margin-top:16px;border-radius:3px;background:rgba(34,28,51,.10);overflow:hidden}
+.bar{display:block;height:5px;margin-top:16px;border-radius:3px;background:var(--track);overflow:hidden}
 .bar[hidden]{display:none}
 .bar i{display:block;height:100%;width:0;background:var(--violet);opacity:.5;transition:width .3s ease}
 .bar.over i{background:var(--clay);opacity:.75}
@@ -135,7 +238,7 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .card{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:22px}
 label{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:5px}
 input,select,textarea{
-  font-family:inherit;font-size:16px;color:var(--ink);background:#fff;
+  font-family:inherit;font-size:16px;color:var(--ink);background:var(--field);
   border:1px solid var(--line);border-radius:var(--radius);padding:10px;width:100%;
   -webkit-user-select:text;user-select:text;
   -webkit-touch-callout:default;
@@ -147,14 +250,17 @@ input[type="number"],input[type="text"],input[type="date"],input[type="password"
 }
 input.num-in{font-family:var(--mono);font-weight:700}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--violet);outline-offset:1px}
-input:disabled,select:disabled{background:rgba(34,28,51,.05);color:var(--ink-soft)}
+input:disabled,select:disabled{background:var(--disabled);color:var(--ink-soft)}
 #amount{font-family:var(--mono);font-weight:700;font-size:28px;padding:12px 14px;letter-spacing:-.02em}
-.cats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}
-.cat{background:#fff;color:var(--ink-soft);border:1px solid var(--line);padding:12px 4px;font-size:13px;font-weight:600;touch-action:manipulation}
+.cats,.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}
+.seg{margin-top:0}
+.segb{padding:12px 4px;font-size:13px;font-weight:600;border-radius:var(--radius);touch-action:manipulation}
+.segb:hover{opacity:1;border-color:var(--ink-soft)}
+.cat,.segb{background:var(--field);color:var(--ink-soft);border:1px solid var(--line);padding:12px 4px;font-size:13px;font-weight:600;touch-action:manipulation}
 .cat:hover{opacity:1;border-color:var(--ink-soft)}
-.cat.on{background:rgba(75,47,160,.12);border-color:var(--violet);color:var(--violet)}
-.cat.on[data-cat="transporte"]{background:rgba(15,110,99,.13);border-color:var(--teal);color:var(--teal)}
-.cat.on[data-cat="unico"]{background:rgba(184,106,18,.16);border-color:var(--ochre);color:var(--ochre)}
+.cat.on,.segb.on{background:var(--violet-soft);border-color:var(--violet);color:var(--violet)}
+.cat.on[data-cat="transporte"]{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
+.cat.on[data-cat="unico"]{background:var(--ochre-soft);border-color:var(--ochre);color:var(--ochre)}
 #note{margin-top:9px}
 .acts{display:flex;align-items:center;gap:10px;margin-top:12px}
 #add{flex:1;padding:13px 18px;font-size:15px}
@@ -165,13 +271,13 @@ input:disabled,select:disabled{background:rgba(34,28,51,.05);color:var(--ink-sof
 
 button{
   font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;
-  background:var(--violet);color:#fff;border:1px solid var(--violet);
+  background:var(--violet);color:var(--on-accent);border:1px solid var(--violet);
   border-radius:var(--radius);padding:10px 18px;transition:opacity .15s;
   /* los botones no se seleccionan: tocar dos veces el número grande pintaba
      media pantalla de azul. El texto seleccionable es el de los campos, que
      es lo que iOS necesita explícito. */
   -webkit-user-select:none;user-select:none;
-  -webkit-tap-highlight-color:rgba(75,47,160,.14);
+  -webkit-tap-highlight-color:var(--tap);
 }
 button:hover{opacity:.86}
 button:disabled{opacity:.4;cursor:default}
@@ -207,7 +313,7 @@ button.mini{font-size:12px;padding:5px 10px}
 .onb{
   position:fixed;inset:0;z-index:20;overflow:auto;
   display:flex;align-items:center;justify-content:center;padding:20px;
-  background:rgba(34,28,51,.55);
+  background:var(--overlay);
 }
 .onb[hidden]{display:none}
 .onb-card{width:100%;max-width:380px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:22px 20px;text-align:center}
@@ -246,10 +352,10 @@ h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
 .h-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
 .item{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
 .item .tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:3px 7px;border-radius:2px;white-space:nowrap;margin-top:2px}
-.tag.diario{background:rgba(75,47,160,.12);color:var(--violet)}
-.tag.transporte{background:rgba(15,110,99,.13);color:var(--teal)}
-.tag.unico{background:rgba(184,106,18,.14);color:var(--ochre)}
-.tag.ingreso{background:rgba(15,110,99,.13);color:var(--teal)}
+.tag.diario{background:var(--violet-soft);color:var(--violet)}
+.tag.transporte{background:var(--teal-soft);color:var(--teal)}
+.tag.unico{background:var(--ochre-soft);color:var(--ochre)}
+.tag.ingreso{background:var(--teal-soft);color:var(--teal)}
 .item .edit{
   flex:1;min-width:0;display:flex;align-items:flex-start;gap:10px;
   background:none;border:none;padding:0;margin:0;font:inherit;color:inherit;
@@ -257,7 +363,7 @@ h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
 }
 .item .edit:hover{opacity:1}
 .item .edit:hover .desc{color:var(--violet)}
-.item.editing{background:rgba(75,47,160,.06)}
+.item.editing{background:var(--violet-ghost)}
 /* las notas largas se muestran enteras: cortarlas con puntos suspensivos dejaba
    texto que no había forma de leer */
 .item .desc{flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere}
@@ -272,7 +378,7 @@ h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
 .env{position:relative;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper-2);height:84px;overflow:hidden;cursor:pointer;transition:border-color .15s}
 .env:hover{border-color:var(--violet)}
 .env.today-env{border-color:var(--ink);border-width:1.5px}
-.env .fill{position:absolute;left:0;right:0;bottom:0;background:var(--violet);opacity:.16;transition:height .35s ease}
+.env .fill{position:absolute;left:0;right:0;bottom:0;background:var(--violet);opacity:var(--fill-op);transition:height .35s ease}
 .env.overflow .fill{background:var(--clay);opacity:.24}
 .env .d{position:absolute;top:6px;left:0;right:0;text-align:center;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
 .env .v{position:absolute;bottom:7px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700}
@@ -289,7 +395,7 @@ h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
 .day .dn{flex-basis:100%;font-size:11px;color:var(--ink-soft);font-family:var(--mono)}
 .day.up .dv{color:var(--teal)} .day.up .dk{color:var(--teal);opacity:.85}
 .day.down .dv{color:var(--ink-soft)}
-.day.down{background:rgba(184,106,18,.06)}
+.day.down{background:var(--ochre-ghost)}
 .day.zero .dv{color:var(--ink-soft);opacity:.7}
 
 /* totales del mes */
@@ -338,7 +444,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v4.1.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v4.2.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -476,6 +582,18 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       </div>
     </div>
     <p class="box-copy">Cambiá acá cuando quieras: “Sin límite” anota los gastos y nada más, “Lo fijo yo” usa el monto de al lado y “Calculado” lo saca de lo que cobrás en el tramo. Los gastos ya anotados quedan igual.</p>
+
+    <div class="cfg">
+      <div style="flex:1 1 240px">
+        <label id="temaLabel">Apariencia</label>
+        <div class="seg" role="group" aria-labelledby="temaLabel">
+          <button class="segb" data-tema="auto" aria-pressed="false">Automático</button>
+          <button class="segb" data-tema="claro" aria-pressed="false">Claro</button>
+          <button class="segb" data-tema="oscuro" aria-pressed="false">Oscuro</button>
+        </div>
+      </div>
+    </div>
+    <p class="box-copy">En automático sigue el tema del dispositivo. Es de este aparato: no viaja al Gist ni le cambia el tema a la computadora.</p>
 
     <div class="box">
       <div class="box-head">
@@ -859,6 +977,47 @@ const spentOn = iso => state.items.filter(x=>x.date===iso && x.cat==='diario').r
    presupuesto de transporte aparte, así que "cuánto llevás gastado hoy" es todo
    lo anotado hoy. Las categorías siguen sirviendo para los totales del mes. */
 const totalOn = iso => state.items.filter(x=>x.date===iso).reduce((s,x)=>s+x.amount,0);
+
+/* ---------- claro y oscuro ----------
+   El tema es de este dispositivo, no del usuario: vive en su propia clave de
+   localStorage y no entra en el estado. Por eso no sube el schema y no se
+   sincroniza — el celular en oscuro no tiene por qué poner en oscuro la
+   computadora, que es lo que pasaría si viajara al Gist.
+
+   'auto' no escribe nada en el html: así el media query del CSS hace el trabajo
+   solo, incluso antes de que corra este archivo, y el tema sigue al dispositivo
+   cuando cambia al atardecer sin recargar nada. */
+const TKEY = 'sobres.tema';
+const TEMAS = ['auto','claro','oscuro'];
+let tema = (()=>{ try{ return localStorage.getItem(TKEY) || 'auto'; }catch(e){ return 'auto'; } })();
+if(!TEMAS.includes(tema)) tema = 'auto';
+
+const oscuroDelSistema = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+function aplicarTema(){
+  const raiz = document.documentElement;
+  if(tema === 'auto') raiz.removeAttribute('data-theme');
+  else raiz.setAttribute('data-theme', tema);
+  /* La barra de estado del iPhone toma este color: si no se mueve, queda un
+     rectángulo claro arriba de la app oscura. */
+  const oscuro = tema === 'oscuro' || (tema === 'auto' && oscuroDelSistema());
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content = oscuro ? '#242424' : '#E9E6EF';
+  document.querySelectorAll('[data-tema]').forEach(b=>{
+    const on = b.dataset.tema === tema;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+}
+
+document.querySelectorAll('[data-tema]').forEach(b=>b.onclick=()=>{
+  tema = b.dataset.tema;
+  try{ localStorage.setItem(TKEY, tema); }catch(e){}
+  aplicarTema();
+});
+/* En automático el CSS ya se cambia solo; esto es para la barra de estado. */
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', aplicarTema);
+aplicarTema();
 
 /* ---------- las dos vistas ----------
    Hoy es lo que se usa todos los días: el número, el formulario y lo anotado
