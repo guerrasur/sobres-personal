@@ -31,20 +31,24 @@ plata: el bondi, el cargador y el café salen todos de ahí. No hay un presupues
 transporte que el usuario declare por adelantado ni una categoría que no cuente — la app
 no le cree a lo dicho, mira lo anotado.
 
-Lo único distinto entre ellas es **de qué sobre sale cada una**. "Del día" y "Transporte"
-salen del sobre de hoy; los **"Aparte" no**, porque una compra puntual no puede romper el
-día: un cargador de 40.000 contra un sobre de 5.500 dejaba el día en −34.500 y la app
-dejaba de decir nada. Bajan el diario de todos los días que quedan, y por eso entran en el
-pool ya el mismo día en que se anotan (`delSobre()` los saltea, el pool los incluye).
+Las tres bajan el número igual. Donde sí se separan es en el **registro** de cómo vino cada
+día —la tira de la semana y los días cerrados—: ahí `delSobre()` saltea los "Aparte",
+porque una compra puntual no es el ritmo de ese día y pintarla contra el sobre dejaba la
+semana ilegible.
 
 Se recalcula en cada render, así que un gasto cargado a mitad de camino baja el diario del
 resto de los días al instante. Ese es el comportamiento central: si el usuario compra algo
 de 38.000, quiere ver ya cuánto le queda por día hasta el final.
 
-**Lo de hoy no entra en la resta**: lo descuenta el número grande (`diario − lo gastado
-hoy`), y restarlo también del pool sería contarlo dos veces. Las dos excepciones son los
-"Aparte" de hoy, que no salen del sobre de hoy y sí entran, y lo cargado con fecha futura:
-ya se sabe que va a salir.
+**Lo de hoy también entra en la resta.** El número grande no es "lo que queda del sobre de
+hoy" sino **cuánto se puede gastar por día de acá al fin**, así que cada gasto lo baja
+apenas en vez de hundir el día: una sesión de 40.000 contra un sobre de 5.555 dejaba el día
+en −39.615 y la app dejaba de decir nada. Ahora el número **nunca queda negativo**; cuando
+llega a cero es porque no queda plata, y ahí aparece el cartel de "Llegaste a $0".
+
+El rótulo dice cuál de los tres números es: **"Por día"** con un período, **"Queda hoy"** a
+mano —ahí sí es el sobre del día, porque el monto lo fijó el usuario y no hay nada que
+repartir— y **"Gastaste hoy"** sin límite.
 
 La fecha de fin es el día del próximo cobro: arranca el período siguiente y **no** cuenta
 como día de este. Hoy sí cuenta. El diario nunca se muestra negativo; si lo anotado se
@@ -60,8 +64,8 @@ lugar donde se explica de dónde sale: nunca fijo en pantalla.
 La app se abre para anotar un gasto y cerrarla. La vista `Hoy` tiene tres cosas y nada
 más, en este orden:
 
-1. **Cuánto queda hoy**, el número grande, sin nada al lado. Debajo va una barra fina con
-   la proporción del día: dice lo mismo que "gastaste X de Y" sin repetir una cifra.
+1. **Cuánto se puede gastar por día**, el número grande, sin nada al lado. Debajo va una
+   barra fina con la proporción del día y una línea corta con lo anotado hoy.
 2. **El formulario**, visible sin scrollear apenas se abre la app.
 3. **Lo anotado hoy**, la lista.
 
