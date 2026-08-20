@@ -68,10 +68,6 @@ try{
   --ochre-ghost:rgba(184,106,18,.06);
   --clay-soft:rgba(158,47,39,.10);
   --clay-line:rgba(158,47,39,.30);
-  /* Ahorros: la categoría que no mueve ningún número, y por eso es la única
-     apagada. Con un acento parecería que pesa como las otras tres. */
-  --slate:#4A4458;
-  --slate-soft:rgba(34,28,51,.09);
   --radius:3px;
   /* Tipografías del sistema: la app tiene que verse igual de bien sin red, y
      en el subte no hay a quién pedirle un woff2. Ver CLAUDE.md. */
@@ -108,8 +104,6 @@ try{
   --ochre-ghost:rgba(224,166,74,.09);
   --clay-soft:rgba(240,129,122,.15);
   --clay-line:rgba(240,129,122,.42);
-  --slate:#C6C1D2;
-  --slate-soft:rgba(255,255,255,.11);
   }
 }
 /* elegido a mano en Ajustes: le gana al dispositivo */
@@ -140,8 +134,6 @@ try{
   --ochre-ghost:rgba(224,166,74,.09);
   --clay-soft:rgba(240,129,122,.15);
   --clay-line:rgba(240,129,122,.42);
-  --slate:#C6C1D2;
-  --slate-soft:rgba(255,255,255,.11);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -266,17 +258,15 @@ input.num-in{font-family:var(--mono);font-weight:700}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--violet);outline-offset:1px}
 input:disabled,select:disabled{background:var(--disabled);color:var(--ink-soft)}
 #amount{font-family:var(--mono);font-weight:700;font-size:28px;padding:12px 14px;letter-spacing:-.02em}
-.cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:9px}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}
+.cats,.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}
 .seg{margin-top:0}
 .segb{padding:12px 4px;font-size:13px;font-weight:600;border-radius:var(--radius);touch-action:manipulation}
 .segb:hover{opacity:1;border-color:var(--ink-soft)}
-.cat,.segb{background:var(--field);color:var(--ink-soft);border:1px solid var(--line);padding:12px 3px;font-size:12.5px;font-weight:600;touch-action:manipulation}
+.cat,.segb{background:var(--field);color:var(--ink-soft);border:1px solid var(--line);padding:12px 4px;font-size:13px;font-weight:600;touch-action:manipulation}
 .cat:hover{opacity:1;border-color:var(--ink-soft)}
 .cat.on,.segb.on{background:var(--violet-soft);border-color:var(--violet);color:var(--violet)}
 .cat.on[data-cat="transporte"]{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
 .cat.on[data-cat="unico"]{background:var(--ochre-soft);border-color:var(--ochre);color:var(--ochre)}
-.cat.on[data-cat="ahorro"]{background:var(--slate-soft);border-color:var(--slate);color:var(--slate)}
 #note{margin-top:9px}
 .acts{display:flex;align-items:center;gap:10px;margin-top:12px}
 #add{flex:1;padding:13px 18px;font-size:15px}
@@ -369,7 +359,7 @@ button.mini{font-size:12px;padding:5px 10px}
 .onb-alt:hover{color:var(--violet);opacity:1}
 .onb-alt.on{color:var(--violet);text-decoration:none}
 .onb-alt.on::before{content:'✓ '}
-#onbOk{width:100%;margin-top:20px;padding:13px 18px;font-size:15px}
+#onbOk,#ceroOk{width:100%;margin-top:20px;padding:13px 18px;font-size:15px}
 .onb-alts[hidden]{display:none}
 /* el día de cobro: una línea de texto con un campo adentro, no un formulario */
 .onb-dia{font-size:13px;color:var(--ink-soft);margin-top:14px}
@@ -386,7 +376,6 @@ h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
 .tag.diario{background:var(--violet-soft);color:var(--violet)}
 .tag.transporte{background:var(--teal-soft);color:var(--teal)}
 .tag.unico{background:var(--ochre-soft);color:var(--ochre)}
-.tag.ahorro{background:var(--slate-soft);color:var(--slate)}
 .tag.ingreso{background:var(--teal-soft);color:var(--teal)}
 .item .edit{
   flex:1;min-width:0;display:flex;align-items:flex-start;gap:10px;
@@ -436,7 +425,6 @@ h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
 .tot .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
 .tot .v{font-family:var(--mono);font-size:21px;font-weight:700;margin-top:5px}
 .tot.violet .v{color:var(--violet)} .tot.teal .v{color:var(--teal)} .tot.ochre .v{color:var(--ochre)}
-.tot.slate .v{color:var(--slate)}
 
 /* importar lo dictado: qué va a entrar, antes de confirmar.
    `.imp-msg` no lleva display propio: así el [hidden] del navegador alcanza. */
@@ -473,11 +461,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
   #amount{font-size:25px}
   .env{height:72px}
   .env .v{font-size:10px}
-  .cat{font-size:11.5px;padding:12px 1px}
-}
-/* cuatro categorías en una pantalla angosta: el rótulo más largo manda */
-@media (max-width:370px){
-  .cat{font-size:10.5px;letter-spacing:-.01em}
+  .cat{font-size:12px;padding:12px 2px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -486,7 +470,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v4.7.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v5.0.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -542,7 +526,6 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <button class="cat on" data-cat="diario">Del día</button>
       <button class="cat" data-cat="transporte">Transporte</button>
       <button class="cat" data-cat="unico">Aparte</button>
-      <button class="cat" data-cat="ahorro">Ahorros</button>
     </div>
     <input id="note" type="text" placeholder="en qué (opcional)" aria-label="En qué">
     <div class="acts">
@@ -616,7 +599,6 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <div class="tot violet"><div class="k">Del día</div><div class="v num" id="mDiario">—</div></div>
       <div class="tot teal"><div class="k">Transporte</div><div class="v num" id="mTransporte">—</div></div>
       <div class="tot ochre"><div class="k">Aparte</div><div class="v num" id="mUnico">—</div></div>
-      <div class="tot slate"><div class="k">Ahorros</div><div class="v num" id="mAhorro">—</div></div>
       <div class="tot"><div class="k">Total</div><div class="v num" id="mTotal">—</div></div>
     </div>
   </section>
@@ -647,7 +629,6 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
           </select>
         </div>
         <div><label for="salTarget" id="salTargetLabel">Cuánto quiero ahorrar</label><input class="num-in" id="salTarget" type="text" inputmode="numeric"></div>
-        <div><label for="salTransport">Plata para transporte</label><input class="num-in" id="salTransport" type="text" inputmode="numeric"></div>
       </div>
       <p class="box-copy" id="salOut"></p>
     </div>
@@ -661,7 +642,6 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <div class="cfg">
         <div><label for="pStart">Desde</label><input id="pStart" type="date"></div>
         <div><label for="pEnd">Hasta</label><input id="pEnd" type="date"></div>
-        <div><label for="pTransport">Plata para transporte</label><input class="num-in" id="pTransport" type="text" inputmode="numeric"></div>
       </div>
 
       <div class="eyebrow" style="margin-top:20px">Lo que cobrás en este tramo</div>
@@ -786,6 +766,24 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
   </div>
 </div>
 
+<!-- Se acabó lo que había para repartir y todavía faltan días. Es el único
+     popup además del de primer uso, y por la única razón que lo justifica: el
+     número que la app existe para mostrar dejó de existir, así que no hay
+     pantalla que dibujar detrás. Lo que se carga acá es el saldo de siempre. -->
+<div class="onb" id="cero" hidden>
+  <div class="onb-card" role="dialog" aria-modal="true" aria-labelledby="ceroTitle">
+    <h2 id="ceroTitle">Llegaste a $0</h2>
+    <div class="onb-what" id="ceroWhat"></div>
+    <input class="onb-num" id="ceroAmount" type="text" inputmode="numeric" placeholder="0"
+           aria-labelledby="ceroTitle ceroWhat">
+    <div class="onb-what" id="ceroOut"></div>
+    <button id="ceroOk">Recalcular con eso</button>
+    <div class="onb-links">
+      <button class="link" id="ceroNo">ahora no</button>
+    </div>
+  </div>
+</div>
+
 <div class="undo" id="undoBar" hidden>
   <div class="undo-in">
     <span id="undoWhat"></span>
@@ -797,7 +795,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <script>
 const KEY = 'sobres.v1';
-const SCHEMA = 8;
+const SCHEMA = 9;
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
 const plain = n => new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n||0);
 const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -874,9 +872,9 @@ function planDelCiclo(dias){
   if(!s || !dias) return { diarioBase:0, ahorro:0, reparto:0 };
   if(s.mode === 'diario'){
     const reparto = s.target * dias;
-    return { diarioBase: s.target, reparto, ahorro: s.amount - s.transport - reparto };
+    return { diarioBase: s.target, reparto, ahorro: s.amount - reparto };
   }
-  const reparto = s.amount - s.target - s.transport;
+  const reparto = s.amount - s.target;
   return { diarioBase: Math.max(0, Math.floor(reparto/dias)), reparto, ahorro: s.target };
 }
 
@@ -904,26 +902,23 @@ function saldoDe(start, end){
 function saldoGastado(){
   const s = state.saldo;
   if(!s) return 0;
-  /* Lo que salió de ahorros no salió de esta plata: sumarlo dejaría el campo
-     precargado en mucho menos de lo que el usuario tiene en el bolsillo. */
+  /* Las tres categorías salen del mismo bolsillo: lo que anotaste desde que
+     cargaste la foto es plata que ya no tenés. */
   return state.items
-    .filter(x => x.cat !== 'ahorro' && x.date >= s.date && x.date <= todayISO())
+    .filter(x => x.date >= s.date && x.date <= todayISO())
     .reduce((a,x)=>a+x.amount, 0);
 }
 const saldoRestante = () => Math.max(0, (state.saldo ? state.saldo.amount : 0) - saldoGastado());
 
 /* El diario del ciclo que contiene `fecha`.
 
-   El sobre del ciclo es (sueldo − ahorro − transporte) repartido entre los días
-   del ciclo: ése es el número que se ve al configurar, y no se mueve solo
-   mientras pasan los días. Acá no se divide por los días que faltan como en los
-   tramos a mano — con un ahorro prometido, un diario que sube cada día se
-   comería justamente el ahorro.
+   Es la misma cuenta que la de un tramo a mano, con otra plata de entrada:
+   (sueldo − ahorro − todo lo anotado) ÷ días que faltan. El ahorro prometido
+   queda **afuera del sobre**, así que gastar de más no se lo come: lo que baja
+   es el diario de los días que quedan.
 
-   Lo que sí lo baja son los gastos "Aparte": se descuentan de lo que queda por
-   repartir y los absorben sólo los días que todavía no pasaron. Comprar algo de
-   38.000 baja el diario del resto del ciclo al instante, que es el
-   comportamiento central de la app. */
+   `diarioBase` es el plan del ciclo entero —lo que se ve en Ajustes— y `diario`
+   es el número de hoy, que se mueve con lo que se anota. */
 function cicloCalc(fecha){
   const s = state.salary;
   if(!s || !s.amount || !s.payday) return null;
@@ -947,54 +942,42 @@ function cicloCalc(fecha){
   const sal = saldoDe(desde, c.end);
   const repDesde = sal ? sal.date : desde;
   const repDias = daysBetween(repDesde, c.end);
-  const transporte = Math.round(s.transport * repDias / total);
   /* La plata que reemplaza al sueldo: la del saldo, o la que había al
      configurar un ciclo ya empezado. En cero — tocó "usar el sueldo igual" —
      el diario es el de un ciclo normal: los mismos pesos por día. */
   const plata = sal ? sal.amount : (parcial && f.amount > 0 ? f.amount : 0);
   const diarioBase = plata > 0
-    ? Math.max(0, Math.floor((plata - transporte)/repDias))
+    ? Math.max(0, Math.floor(plata/repDias))
     : plan.diarioBase;
 
-  const reparto = plata > 0 ? plata - transporte : plan.reparto;
+  const reparto = plata > 0 ? plata : plan.reparto;
 
   const ref = fecha < desde ? desde : fecha;      /* ciclo futuro: cuenta entero */
   const pasados = Math.max(0, Math.min(dias, daysBetween(desde, ref)));
   const faltan = dias - pasados;
 
-  /* Cada gasto "Aparte" se reparte entre los días que quedaban **cuando se
-     hizo**, y baja el diario desde ese día hasta el fin del ciclo. Repartirlo
-     en cambio sobre los días que faltan hoy haría que el número bajara solo un
-     poco cada día sin que el usuario gaste nada, porque los días ya pasados
-     habrían quedado cobrados al valor anterior al gasto.
+  /* Todo lo anotado desde que se reparte la plata, menos lo de hoy: eso lo
+     descuenta el número grande. Las tres categorías salen del mismo sobre. */
+  const gastado = state.items
+    .filter(x => x.date >= repDesde && x.date < c.end && x.date !== ref)
+    .reduce((a,x)=>a+x.amount, 0);
+  const pool = reparto - gastado;
 
-     Así la cuenta cierra: si gasta el sobre todos los días, lo que sale del
-     ciclo es exactamente lo que había para repartir, y el ahorro queda. */
-  /* Los aparte anteriores al saldo no cuentan: esa plata ya salió del bolsillo
-     y el monto que cargó el usuario es lo que quedó después. */
-  const aparte = state.items.filter(x => x.cat==='unico' && x.date>=repDesde && x.date<c.end);
-  const unico = aparte.reduce((a,x)=>a+x.amount, 0);
-  const aparteDia = aparte.reduce((a,x)=>{
-    /* uno cargado con fecha futura pesa desde hoy: ya se sabe que va a salir */
-    const ini = x.date > ref ? ref : x.date;
-    const n = daysBetween(ini < repDesde ? repDesde : ini, c.end);
-    return a + (n > 0 ? Math.floor(x.amount/n) : x.amount);
-  }, 0);
   return {
     start:desde, end:c.end, cicloStart:c.start, parcial, total, dias, pasados, faltan,
     /* desde dónde y entre cuántos días se reparte la plata: con un saldo
        cargado no son los del ciclo, y es lo que muestra la cuenta */
     saldo:sal, repDesde, repDias,
-    entra: plata > 0 ? plata : (parcial ? reparto + transporte : s.amount),
+    entra: plata > 0 ? plata : (parcial ? reparto : s.amount),
     /* Con la plata contada a mano no hay ahorro prometido que sostener: lo que
        hay es lo que hay, y se reparte hasta el próximo cobro. */
     ahorro: (parcial || sal) ? 0 : plan.ahorro,
-    transporte, unico, aparteDia, reparto, diarioBase,
-    diario: faltan > 0 ? Math.max(0, diarioBase - aparteDia) : 0,
+    reparto, diarioBase, gastado, pool,
+    diario: faltan > 0 ? Math.max(0, Math.floor(pool/faltan)) : 0,
     finished: faltan <= 0,
     /* Con la forma de un período de siempre, así el cierre de días, el
        acumulado y la tira de la semana funcionan sin enterarse. */
-    periodo: { id:'ciclo:'+desde, start:desde, end:c.end, transport:transporte,
+    periodo: { id:'ciclo:'+desde, start:desde, end:c.end,
                incomes:[], ciclo:true, parcial }
   };
 }
@@ -1015,13 +998,17 @@ function cicloCalc(fecha){
              día en que la cargó.
    schema 8: agrega un cuarto valor para cat: 'ahorro', el gasto que salió de
              plata que no es la del período.
+   schema 9: saca el presupuesto de transporte (period.transport y
+             salary.transport) y la categoría 'ahorro', que vuelve a 'unico'.
+             Las tres categorías descuentan del mismo sobre. Agrega cero, el
+             día en que se ocultó el cartel de "llegaste a $0".
    migrate() es la única puerta de entrada: localStorage, Gist y respaldos
    importados pasan por acá. Si el dato viene de un schema más nuevo que el
    que entiende esta copia de la app, no se toca: se avisa y listo. */
 
 function blankState(){
   return { schema:SCHEMA, daily:10000, dailyMode:'manual', weekStart:1,
-           setup:false, nudged:'', salary:null, saldo:null,
+           setup:false, nudged:'', cero:'', salary:null, saldo:null,
            periods:[], closed:[], deleted:[], updatedAt:0, items:[] };
 }
 
@@ -1038,22 +1025,22 @@ function migrate(raw){
   if(from < 6) d = up5to6(d);
   if(from < 7) d = up6to7(d);
   if(from < 8) d = up7to8(d);
+  if(from < 9) d = up8to9(d);
   return {ok:true, from, migrated:from < SCHEMA, state:normalize(d)};
 }
 
 /* Los datos viejos no tienen ingresos: no hay de dónde inventarlos. Se arma
-   el período con lo que sí hay — el rango que cubren los gastos anotados y lo
-   que se gastó en transporte — y el diario queda fijo a mano en el valor que
-   ya tenía, así el número no cambia solo debajo de los pies del usuario. */
+   el período con lo único que sí hay —el rango que cubren los gastos anotados—
+   y el diario queda fijo a mano en el valor que ya tenía, así el número no
+   cambia solo debajo de los pies del usuario. (Este escalón armaba además un
+   presupuesto de transporte; el campo se fue en el schema 9 y el resultado no
+   cambia, porque `normalize()` ya no lo reconstruye.) */
 function up1to2(d){
   const items = d.items.filter(x => x && x.date);
   const start = items.map(x=>x.date).sort()[0] || todayISO();
   const end = addMonths(start, 1);
-  const transport = items
-    .filter(x => x.cat==='transporte' && x.date>=start && x.date<end)
-    .reduce((s,x)=>s+int(x.amount), 0);
   return { ...d, schema:2, dailyMode:'manual', periods:[
-    { id:uid(), start, end, transport, incomes:[] }
+    { id:uid(), start, end, incomes:[] }
   ]};
 }
 
@@ -1103,6 +1090,21 @@ function up7to8(d){
   return { ...d, schema:8 };
 }
 
+/* Se fue el presupuesto de transporte: `normalize()` deja de reconstruir
+   `transport` y con eso desaparece de los tramos y del sueldo. Lo anotado en
+   transporte queda donde está — son gastos de verdad y siguen contando en el
+   mes y en el CSV; lo único que se va es el número que el usuario declaraba
+   por adelantado.
+
+   `ahorro` vuelve a `unico`, que es donde el usuario lo quiere: desde este
+   schema los aparte tampoco bajan el diario, así que el gasto sigue sin tocar
+   el número. Reclasificar acá sí corresponde —a diferencia de `up7to8`, que no
+   podía adivinar nada—, porque el destino es uno solo y no hay nada que elegir. */
+function up8to9(d){
+  return { ...d, schema:9, cero:'',
+    items: d.items.map(x => (x && x.cat === 'ahorro') ? { ...x, cat:'unico' } : x) };
+}
+
 /* El sueldo se reconstruye campo por campo, como todo lo demás. Si viene roto o
    a medias queda en null, y ahí el modo sueldo muestra "—" con una línea de qué
    falta en vez de inventar un número. */
@@ -1114,7 +1116,6 @@ function normSalary(s){
     payday: Math.min(31, Math.max(1, int(s.payday) || 1)),
     mode: s.mode === 'diario' ? 'diario' : 'ahorro',
     target: Math.max(0, int(s.target)),
-    transport: Math.max(0, int(s.transport)),
     first: (f && f.start && f.end && f.from)
       ? { start:String(f.start).slice(0,10), end:String(f.end).slice(0,10),
           from:String(f.from).slice(0,10), amount:Math.max(0, int(f.amount)) }
@@ -1137,7 +1138,6 @@ function normalize(d){
       id: p.id ?? uid(),
       start: String(p.start).slice(0,10),
       end: String(p.end).slice(0,10),
-      transport: Math.max(0, int(p.transport)),
       incomes: (Array.isArray(p.incomes) ? p.incomes : [])
         .filter(i => i && i.amount != null)
         .map(i => ({ id:i.id ?? uid(), date:String(i.date||p.start).slice(0,10),
@@ -1151,6 +1151,7 @@ function normalize(d){
     weekStart: Number(d.weekStart) === 0 ? 0 : 1,
     setup: !!d.setup,
     nudged: d.nudged ? String(d.nudged).slice(0,10) : '',
+    cero: d.cero ? String(d.cero).slice(0,10) : '',
     salary: normSalary(d.salary),
     saldo: normSaldo(d.saldo),
     periods,
@@ -1163,7 +1164,7 @@ function normalize(d){
     updatedAt: int(d.updatedAt),
     items: d.items.filter(x => x && x.date).map(x => ({
       id: x.id ?? uid(), date:String(x.date).slice(0,10), amount:int(x.amount),
-      cat: ['diario','transporte','unico','ahorro'].includes(x.cat) ? x.cat : 'diario',
+      cat: ['diario','transporte','unico'].includes(x.cat) ? x.cat : 'diario',
       note: String(x.note||''), updatedAt: int(x.updatedAt)
     }))
   };
@@ -1224,7 +1225,7 @@ function block(schema, where){
     + (where==='gist'
         ? 'No se tocó nada y se pausó la sincronización para no pisarlos. Actualizá Sobres en este dispositivo (recargá con la app cerrada) y volvé a entrar.'
         : 'No se tocó nada. Actualizá Sobres en este dispositivo (recargá con la app cerrada) y volvé a entrar.');
-  document.querySelectorAll('#add,.cat,#otroDia,#incAdd,#pNew,#pDel,#wipe,#impBtn,#impTxtBtn,#syncNow,#cfgMode,#cfgDaily,#cfgStart,#pStart,#pEnd,#pTransport,#pSel,#salAmount,#salDia,#salMode,#salTarget,#salTransport')
+  document.querySelectorAll('#add,.cat,#otroDia,#incAdd,#pNew,#pDel,#wipe,#impBtn,#impTxtBtn,#syncNow,#cfgMode,#cfgDaily,#cfgStart,#pStart,#pEnd,#pSel,#salAmount,#salDia,#salMode,#salTarget')
     .forEach(el => el.disabled = true);
 }
 
@@ -1253,13 +1254,16 @@ function currentPeriod(){
       || ps[0];
 }
 
-/* (ingresos − transporte presupuestado − únicos ya hechos) ÷ días que faltan
+/* (lo que cobrás en el tramo − todo lo que ya anotaste) ÷ días que faltan
 
-   Con un saldo cargado la plata no sale de lo que cobró sino de lo que dijo
-   tener, y todo lo anterior a esa fecha queda afuera: el transporte que falta
-   se prorratea sobre los días que cubre y los aparte de antes ya salieron de
-   ese bolsillo. La regla del tramo —repartir entre los días que faltan— no
-   cambia; cambia de dónde sale la plata. */
+   Las tres categorías descuentan y ninguna tiene presupuesto propio: hay un
+   solo sobre. Lo de **hoy** no entra en `gastado` porque lo descuenta el número
+   grande (`diario − lo gastado hoy`); restarlo acá también sería contarlo dos
+   veces. Lo cargado con fecha futura sí entra: ya se sabe que va a salir.
+
+   Con un saldo cargado la plata no sale de lo que cobró sino de lo que el
+   usuario dijo tener, y lo anotado antes de esa fecha no cuenta: esa plata ya
+   había salido del bolsillo cuando sacó la foto. */
 function periodCalc(p){
   if(!p) return null;
   const t = todayISO();
@@ -1267,16 +1271,14 @@ function periodCalc(p){
   const total = daysBetween(p.start, p.end);
   const saldo = saldoDe(p.start, p.end);
   const desde = saldo ? saldo.date : p.start;
-  const transport = saldo
-    ? Math.round(p.transport * daysBetween(saldo.date, p.end) / total)
-    : p.transport;
-  const unico = state.items
-    .filter(x => x.cat==='unico' && x.date>=desde && x.date<p.end)
+  const entra = saldo ? saldo.amount : income;
+  const gastado = state.items
+    .filter(x => x.date >= desde && x.date < p.end && x.date !== t)
     .reduce((s,x)=>s+x.amount, 0);
-  const pool = (saldo ? saldo.amount : income) - transport - unico;
+  const pool = entra - gastado;
   const from = t < p.start ? p.start : t;          /* período futuro: cuenta entero */
   const days = daysBetween(from, p.end);           /* hoy cuenta, el día de fin no */
-  return { income, transport, unico, pool, days, total, from, saldo, last: addMonths(p.end,0),
+  return { income, entra, gastado, pool, days, total, from, desde, saldo, last: addMonths(p.end,0),
            finished: days <= 0, daily: days > 0 ? Math.max(0, Math.floor(pool/days)) : 0 };
 }
 
@@ -1351,7 +1353,7 @@ function periodTally(p){
   if(!p) return null;
   const rows = state.closed
     .filter(c => c.date >= p.start && c.date < p.end)
-    .map(c => ({ date:c.date, envelope:c.envelope, spent:spentOn(c.date), diff:c.envelope - spentOn(c.date) }))
+    .map(c => ({ date:c.date, envelope:c.envelope, spent:totalOn(c.date), diff:c.envelope - totalOn(c.date) }))
     .sort((a,b2) => b2.date.localeCompare(a.date));
   return {
     rows,
@@ -1368,10 +1370,10 @@ function weekDays(){
   return Array.from({length:7},(_,i)=>{ const d=new Date(start); d.setDate(start.getDate()+i);
     return { iso:d.toISOString().slice(0,10), dow:DAYS[d.getDay()], n:d.getDate() }; });
 }
-const spentOn = iso => state.items.filter(x=>x.date===iso && x.cat==='diario').reduce((s,x)=>s+x.amount,0);
-/* Sin límite no hay tres bolsillos: no hay sobre del que salga lo del día ni
-   presupuesto de transporte aparte, así que "cuánto llevás gastado hoy" es todo
-   lo anotado hoy. Las categorías siguen sirviendo para los totales del mes. */
+/* Lo gastado en un día: **todo** lo anotado, de las tres categorías. Hay un
+   solo sobre y de ahí sale cada cosa — el bondi y el cargador tanto como el
+   café —, así que no hay nada que separar. Las categorías siguen sirviendo
+   para los totales del mes y para el CSV. */
 const totalOn = iso => state.items.filter(x=>x.date===iso).reduce((s,x)=>s+x.amount,0);
 
 /* ---------- claro y oscuro ----------
@@ -1432,7 +1434,7 @@ document.getElementById('tabMas').onclick = () => setView('mas');
 let whyOpen = false;
 let editId = null;
 
-const CAT = { diario:'día', transporte:'transporte', unico:'aparte', ahorro:'ahorros' };
+const CAT = { diario:'día', transporte:'transporte', unico:'aparte' };
 
 function render(){
   const today = todayISO();
@@ -1440,6 +1442,7 @@ function render(){
   renderToday(info);
   renderWhy(info);
   renderSaldo(info);
+  renderCero(info);
   renderWeek(info);
   renderTally(info);
   renderMonth(today);
@@ -1465,7 +1468,7 @@ function render(){
    sin repetir ninguna cifra; el resto se ve al tocar. */
 function renderToday(info){
   const today = todayISO();
-  const daily = info.daily, spent = spentOn(today), left = daily - spent;
+  const daily = info.daily, spent = totalOn(today), left = daily - spent;
   const el = document.getElementById('todayLeft');
   const bar = document.getElementById('todayBar');
   const caret = document.getElementById('todayCaret');
@@ -1515,7 +1518,7 @@ function renderWhy(info){
   if(!whyOpen) return;
 
   const r = (k, n, cls) => `<div class="why-row${cls?' '+cls:''}"><span>${k}</span><span class="n">${n}</span></div>`;
-  const c = info.calc, p = info.p, spent = spentOn(todayISO());
+  const c = info.calc, p = info.p, spent = totalOn(todayISO());
   const rows = [];
 
   if(info.manual){
@@ -1525,15 +1528,11 @@ function renderWhy(info){
     rows.push(r(k.saldo ? `La plata que cargaste el ${dm(k.saldo.date)}`
               : k.parcial ? 'La plata que tenías' : 'Sueldo del mes', '+ ' + fmt(k.entra)));
     if(k.ahorro > 0) rows.push(r('Lo que querés ahorrar', '− ' + fmt(k.ahorro)));
-    if(k.transporte > 0) rows.push(r('Transporte', '− ' + fmt(k.transporte)));
-    /* Sin ahorro ni transporte, "A repartir" repetiría el renglón de arriba */
-    if(k.ahorro > 0 || k.transporte > 0) rows.push(r('A repartir', fmt(k.reparto), 'sum'));
-    rows.push(`<div class="why-div">÷ ${k.repDias} ${k.repDias===1?'día':'días'} · del ${dm(k.repDesde)} al ${dm(k.end)}, sin contar ese último</div>`);
-    rows.push(r('Por día', fmt(k.diarioBase), k.aparteDia ? '' : 'mid'));
-    if(k.aparteDia){
-      rows.push(r(`Gastos aparte (${fmt(k.unico)}), por día`, '− ' + fmt(k.aparteDia)));
-      rows.push(r('Por día', info.ready ? fmt(info.daily) : '—', 'mid'));
-    }
+    if(k.gastado > 0) rows.push(r(`Lo que anotaste desde el ${dm(k.repDesde)}`, '− ' + fmt(k.gastado)));
+    /* Sin ahorro ni gastos, "Queda" repetiría el renglón de arriba */
+    if(k.ahorro > 0 || k.gastado > 0) rows.push(r('Queda', fmt(k.pool), 'sum'));
+    rows.push(`<div class="why-div">÷ ${k.faltan} ${k.faltan===1?'día':'días'} · de hoy al ${dm(k.end)}, sin contar ese último</div>`);
+    rows.push(r('Por día', fmt(info.daily), 'mid'));
     if(k.ahorro < 0)
       rows.push(`<div class="why-note">Gastando eso por día no llegás al fin del ciclo: te faltan ${esc(fmt(-k.ahorro))}.</div>`);
     else if(k.saldo)
@@ -1541,21 +1540,20 @@ function renderWhy(info){
     else if(k.parcial)
       rows.push(`<div class="why-note">Este ciclo arrancó el ${esc(dm(k.cicloStart))} y lo configuraste el ${esc(dm(k.start))}: va con la plata que tenías, no con el sueldo entero. El que viene ya va normal.</div>`);
     else if(info.daily <= 0)
-      rows.push(`<div class="why-note">Los gastos aparte se comieron lo que quedaba del ciclo.</div>`);
+      rows.push(`<div class="why-note">Se acabó lo que había para repartir en este ciclo.</div>`);
   }else if(!c){
     rows.push(`<div class="why-note">${esc(info.why||'')}</div>`);
   }else{
     rows.push(c.saldo
-      ? r(`La plata que cargaste el ${dm(c.saldo.date)}`, '+ ' + fmt(c.saldo.amount))
+      ? r(`La plata que cargaste el ${dm(c.saldo.date)}`, '+ ' + fmt(c.entra))
       : r(`Lo que cobrás en el tramo (${p.incomes.length})`, '+ ' + fmt(c.income)));
-    rows.push(r('Transporte', '− ' + fmt(c.transport)));
-    rows.push(r('Gastos aparte', '− ' + fmt(c.unico)));
-    rows.push(r('A repartir', fmt(c.pool), 'sum'));
-    rows.push(`<div class="why-div">÷ ${c.days} ${c.days===1?'día':'días'} · del ${dm(c.from)} al ${dm(p.end)}, sin contar ese último</div>`);
+    if(c.gastado > 0) rows.push(r(`Lo que anotaste desde el ${dm(c.desde)}`, '− ' + fmt(c.gastado)));
+    if(c.gastado > 0) rows.push(r('Queda', fmt(c.pool), 'sum'));
+    rows.push(`<div class="why-div">÷ ${c.days} ${c.days===1?'día':'días'} · de hoy al ${dm(p.end)}, sin contar ese último</div>`);
     rows.push(r('Por día', info.ready ? fmt(info.daily) : '—', 'mid'));
     if(!info.ready) rows.push(`<div class="why-note">${esc(info.why||'')}</div>`);
     else if(c.saldo) rows.push(`<div class="why-note">Va con la plata que cargaste el ${esc(dm(c.saldo.date))}, no con lo que cobrás en el tramo. Cuando arranque el tramo siguiente vuelve solo.</div>`);
-    else if(c.pool <= 0) rows.push(`<div class="why-note">Los gastos aparte y el transporte se comieron todo lo que entró.</div>`);
+    else if(c.pool <= 0) rows.push(`<div class="why-note">Se acabó lo que había para repartir en este tramo.</div>`);
   }
 
   if(info.ready){
@@ -1571,7 +1569,7 @@ function renderWeek(info){
   if(info.none) return;
   const today = todayISO(), daily = info.daily, days = weekDays();
   document.getElementById('strip').innerHTML = days.map(d=>{
-    const s = spentOn(d.iso), pct = Math.min(100, daily ? s/daily*100 : 0);
+    const s = totalOn(d.iso), pct = Math.min(100, daily ? s/daily*100 : 0);
     const future = d.iso > today;
     return `<div class="env ${d.iso===today?'today-env':''} ${daily&&s>daily?'overflow':''}" data-date="${d.iso}" title="${d.iso}">
       <span class="fill" style="height:${pct}%"></span>
@@ -1589,7 +1587,7 @@ function renderWeek(info){
   });
 
   document.getElementById('weekRange').textContent = `del ${days[0].n} al ${days[6].n}`;
-  const wSpent = days.reduce((s,d)=>s+spentOn(d.iso),0);
+  const wSpent = days.reduce((s,d)=>s+totalOn(d.iso),0);
   document.getElementById('weekLeft').textContent = `Gastaste ${fmt(wSpent)} en la semana.`;
 }
 
@@ -1627,7 +1625,6 @@ function renderMonth(today){
   document.getElementById('mDiario').textContent = fmt(by('diario'));
   document.getElementById('mTransporte').textContent = fmt(by('transporte'));
   document.getElementById('mUnico').textContent = fmt(by('unico'));
-  document.getElementById('mAhorro').textContent = fmt(by('ahorro'));
   document.getElementById('mTotal').textContent = fmt(inMonth.reduce((s,x)=>s+x.amount,0));
   document.getElementById('monthName').textContent =
     new Date(today+'T00:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'});
@@ -1688,7 +1685,7 @@ function renderPeriod(){
   const cur = (enCurso && state.periods.some(x => x.id === enCurso.id)) ? enCurso : null;
   if(!state.periods.length){
     sel.innerHTML = '<option>sin tramos</option>';
-    ['pStart','pEnd','pTransport'].forEach(id=>{ const e=document.getElementById(id); e.value=''; e.disabled=true; });
+    ['pStart','pEnd'].forEach(id=>{ const e=document.getElementById(id); e.value=''; e.disabled=true; });
     document.getElementById('incList').innerHTML = `<div class="empty">Creá uno con “Nuevo tramo”.</div>`;
     document.getElementById('incAdd').disabled = true;
     document.getElementById('pDel').disabled = true;
@@ -1700,10 +1697,9 @@ function renderPeriod(){
   sel.innerHTML = state.periods.map(x=>
     `<option value="${x.id}">${dm(x.start)} → ${dm(x.end)}${cur&&x.id===cur.id?' · en curso':''}</option>`).join('');
   sel.value = String(editId);
-  ['pStart','pEnd','pTransport','incAdd','pDel'].forEach(id=>document.getElementById(id).disabled = blocked);
+  ['pStart','pEnd','incAdd','pDel'].forEach(id=>document.getElementById(id).disabled = blocked);
   document.getElementById('pStart').value = p.start;
   document.getElementById('pEnd').value = p.end;
-  document.getElementById('pTransport').value = plain(p.transport);
   document.getElementById('incDate').value = document.getElementById('incDate').value || p.start;
 
   document.getElementById('incList').innerHTML = p.incomes.length
@@ -1727,13 +1723,12 @@ function renderPeriod(){
 function renderSalary(info){
   if(state.dailyMode !== 'sueldo') return;
   const s = state.salary;
-  const campos = ['salAmount','salDia','salMode','salTarget','salTransport'];
+  const campos = ['salAmount','salDia','salMode','salTarget'];
   campos.forEach(id => document.getElementById(id).disabled = blocked);
   document.getElementById('salAmount').value = s ? plain(s.amount) : '';
   document.getElementById('salDia').value = s ? String(s.payday) : '';
   document.getElementById('salMode').value = s ? s.mode : 'ahorro';
   document.getElementById('salTarget').value = s ? plain(s.target) : '';
-  document.getElementById('salTransport').value = s ? plain(s.transport) : '';
   document.getElementById('salTargetLabel').textContent =
     (s && s.mode === 'diario') ? 'Cuánto quiero gastar por día' : 'Cuánto quiero ahorrar';
 
@@ -1746,7 +1741,7 @@ function renderSalary(info){
       ? `Este ciclo arrancó el ${dm(k.cicloStart)} y lo configuraste el ${dm(k.start)}: va con lo que tenías, ${fmt(k.diarioBase)} por día. El que viene ya va con el sueldo.`
       : k.ahorro < 0
         ? `Son ${k.dias} días y ${fmt(k.diarioBase)} por día: no llegás al fin del ciclo, te faltan ${fmt(-k.ahorro)}.`
-        : `Son ${k.dias} días: ${fmt(k.diarioBase)} por día y ahorrás ${fmt(k.ahorro)} al final del ciclo.`;
+        : `Son ${k.dias} días: ${fmt(k.diarioBase)} por día y ahorrás ${fmt(k.ahorro)} al final del ciclo. Si un día te pasás, baja el de los días que quedan.`;
 }
 
 /* Un cambio acá recalcula el diario de todos los ciclos y no sólo el actual:
@@ -1754,7 +1749,7 @@ function renderSalary(info){
 function conSueldo(fn){
   if(blocked) return;
   if(!state.salary) state.salary = { amount:0, payday:Number(todayISO().slice(8,10)),
-                                     mode:'ahorro', target:0, transport:0, first:null };
+                                     mode:'ahorro', target:0, first:null };
   fn(state.salary);
   save(); render();
 }
@@ -1762,10 +1757,8 @@ document.getElementById('salAmount').onchange = e => conSueldo(s => { s.amount =
 document.getElementById('salDia').onchange = e => conSueldo(s => { s.payday = Math.min(31, Math.max(1, parseNum(e.target.value) || 1)); });
 document.getElementById('salMode').onchange = e => conSueldo(s => { s.mode = e.target.value === 'diario' ? 'diario' : 'ahorro'; s.target = 0; });
 document.getElementById('salTarget').onchange = e => conSueldo(s => { s.target = Math.max(0, parseNum(e.target.value)); });
-document.getElementById('salTransport').onchange = e => conSueldo(s => { s.transport = Math.max(0, parseNum(e.target.value)); });
 milesInput(document.getElementById('salAmount'));
 milesInput(document.getElementById('salTarget'));
-milesInput(document.getElementById('salTransport'));
 
 /* ---------- gastos ----------
    Anotar un café: escribir el monto y tocar Anotar. La categoría ya viene en
@@ -1969,6 +1962,60 @@ document.getElementById('saldoOff').onclick = () => {
   state.saldo = null; saldoAbierto = false; save(); render();
 };
 
+/* ---------- llegaste a $0 ----------
+   Cuando lo anotado se comió todo lo que había para repartir y todavía faltan
+   días, el diario es cero y el número grande deja de decir nada. Ahí sí la app
+   pregunta —una vez por día, y con "ahora no" siempre a mano—: cuánta plata
+   queda de verdad. Lo que se guarda es el saldo de siempre, así que recalcula
+   desde hoy hasta el próximo cobro sin ningún mecanismo nuevo. */
+const ceroPool = info => info.ciclo ? info.ciclo.pool
+                       : info.calc ? info.calc.pool : 1;
+
+function renderCero(info){
+  const box = document.getElementById('cero');
+  const toca = !blocked && !(estreno && !state.setup)
+    && info.ready && !info.manual && !!info.p
+    && todayISO() < info.p.end
+    && ceroPool(info) <= 0
+    && state.cero !== todayISO();
+  if(box.hidden !== !toca && toca){
+    document.getElementById('ceroAmount').value = '';
+    document.getElementById('ceroOut').textContent = '';
+  }
+  box.hidden = !toca;
+  if(!toca) return;
+  document.getElementById('ceroWhat').textContent =
+    `Se acabó lo que tenías anotado para llegar al ${dm(info.p.end)}. ¿Cuánta plata te queda?`;
+}
+
+function ceroEfecto(){
+  const el = document.getElementById('ceroOut');
+  const v = document.getElementById('ceroAmount').value.trim();
+  if(v === ''){ el.textContent = ''; return; }
+  const i = saldoPrueba(Math.max(0, parseNum(v)));
+  const dias = i.p ? daysBetween(todayISO(), i.p.end) : 0;
+  el.textContent = i.ready && dias > 0
+    ? `${fmt(i.daily)} por día · ${dias} ${dias===1?'día':'días'} hasta el ${dm(i.p.end)}`
+    : '';
+}
+document.getElementById('ceroAmount').addEventListener('input', ceroEfecto);
+document.getElementById('ceroAmount').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') document.getElementById('ceroOk').click();
+});
+milesInput(document.getElementById('ceroAmount'));
+document.getElementById('ceroOk').onclick = () => {
+  const el = document.getElementById('ceroAmount');
+  if(el.value.trim() === '') return;
+  state.saldo = { date: todayISO(), amount: Math.max(0, parseNum(el.value)) };
+  state.cero = '';
+  save(); render();
+};
+/* Ocultarlo lo corre un día, no lo apaga: mañana el número sigue en cero. */
+document.getElementById('ceroNo').onclick = () => {
+  state.cero = todayISO();
+  save(); render();
+};
+
 /* La única explicación de dónde sale el número aparece al tocarlo. */
 document.getElementById('todayBtn').onclick = () => {
   const info = dailyInfo();
@@ -1990,8 +2037,6 @@ const withPeriod = fn => { const p = state.periods.find(x=>x.id===editId); if(p)
 document.getElementById('pSel').onchange = e => { editId = state.periods.find(p=>String(p.id)===e.target.value)?.id ?? editId; render(); };
 document.getElementById('pStart').onchange = e => withPeriod(p=>{ if(e.target.value) p.start = e.target.value; });
 document.getElementById('pEnd').onchange   = e => withPeriod(p=>{ if(e.target.value) p.end = e.target.value; });
-document.getElementById('pTransport').onchange = e => withPeriod(p=>{ p.transport = Math.max(0,parseNum(e.target.value)); });
-milesInput(document.getElementById('pTransport'));
 milesInput(document.getElementById('incAmount'));
 document.getElementById('incAdd').onclick = () => {
   const amount = parseNum(document.getElementById('incAmount').value);
@@ -2007,7 +2052,7 @@ document.getElementById('incNote').addEventListener('keydown',e=>{ if(e.key==='E
 document.getElementById('pNew').onclick = () => {
   const last = state.periods[state.periods.length-1];
   const start = last ? last.end : todayISO();
-  const p = { id:uid(), start, end:addMonths(start,1), transport:last?last.transport:0, incomes:[] };
+  const p = { id:uid(), start, end:addMonths(start,1), incomes:[] };
   state.periods.push(p);
   state.periods.sort((a,b)=>a.start.localeCompare(b.start));
   editId = p.id;
@@ -2132,10 +2177,10 @@ document.getElementById('impFile').onchange = e => {
 const PROMPT_IA = `Te paso un CSV con mis gastos personales de un mes. Las columnas son: fecha,
 categoría, monto y detalle. Los montos están en pesos argentinos.
 
-Las categorías son cuatro: "diario" es el gasto de todos los días, "transporte" tiene
-presupuesto propio, "unico" son compras puntuales del mes, y "ahorro" es lo que pagué
-con plata ahorrada y no con lo que cobré ese mes. Los "ahorro" no son gasto corriente:
-miralos aparte y no los mezcles en el promedio por día.
+Las categorías son tres: "diario" es el gasto de todos los días, el que sale del sobre
+diario; "transporte" son los viajes; y "unico" son las compras puntuales, que pueden ser
+mucho más grandes que un día y a veces se pagan con ahorros. Para el promedio por día
+mirá sobre todo "diario", y tratá los "unico" grandes aparte en vez de repartirlos.
 
 Quiero que me ayudes a entender en qué se me va la plata. Concretamente:
 
@@ -2539,6 +2584,9 @@ function merge(remote){
        más nueva para no reaparecer en el dispositivo que ya lo ocultó. */
     setup: !!(state.setup || remote.setup),
     nudged: (state.nudged || '') > (remote.nudged || '') ? state.nudged : (remote.nudged || ''),
+    /* Igual que `nudged`: si en un dispositivo ya se ocultó el cartel hoy, no
+       tiene que volver a aparecer en el otro. */
+    cero: (state.cero || '') > (remote.cero || '') ? state.cero : (remote.cero || ''),
     deleted: [...deleted],
     updatedAt: Math.max(state.updatedAt||0, remote.updatedAt||0),
     items: [...byId.values()]
@@ -2806,7 +2854,7 @@ function onbGuardarSueldo(saldo){
   const c = onbCiclos();
   state.salary = {
     amount: onbDatos.sueldo, payday: onbDatos.dia, mode: onbDatos.modo,
-    target: onbDatos.target, transport: 0,
+    target: onbDatos.target,
     first: c.parcial ? { start:c.actual.start, end:c.actual.end, from:c.hoy,
                          amount:Math.max(0, int(saldo)) } : null
   };

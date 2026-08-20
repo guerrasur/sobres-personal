@@ -22,17 +22,27 @@ común de un sueldo fijo: el usuario dice cuánto cobra y **qué día del mes**,
 salen solos de ahí — ver "El modo sueldo" más abajo.
 
 ```
-sobre diario = (ingresos del período − transporte presupuestado − únicos ya hechos)
+sobre diario = (ingresos del período − todo lo anotado desde el arranque)
                ÷ días que faltan hasta el fin del período
 ```
 
-Se recalcula en cada render, así que un gasto único cargado a mitad de camino baja el
-diario del resto de los días al instante. Ese es el comportamiento central: si el usuario
-compra algo de 38.000, quiere ver ya cuánto le queda por día hasta el final.
+**Un solo sobre y nada de presupuestos.** Las tres categorías descuentan de la misma
+plata: el bondi, el cargador y el café salen todos de ahí. No hay un presupuesto de
+transporte que el usuario declare por adelantado ni una categoría que no cuente — la app
+no le cree a lo dicho, mira lo anotado.
+
+Se recalcula en cada render, así que un gasto cargado a mitad de camino baja el diario del
+resto de los días al instante. Ese es el comportamiento central: si el usuario compra algo
+de 38.000, quiere ver ya cuánto le queda por día hasta el final.
+
+**Lo de hoy no entra en la resta**: lo descuenta el número grande (`diario − lo gastado
+hoy`), y restarlo también del pool sería contarlo dos veces. Lo cargado con fecha futura
+sí entra: ya se sabe que va a salir.
 
 La fecha de fin es el día del próximo cobro: arranca el período siguiente y **no** cuenta
-como día de este. Hoy sí cuenta. El diario nunca se muestra negativo; si los únicos se
-comieron el período, es cero y el panel lo explica.
+como día de este. Hoy sí cuenta. El diario nunca se muestra negativo; si lo anotado se
+comió el período, es cero — y ahí la app pregunta cuánta plata queda de verdad (ver
+"Llegaste a $0").
 
 Tocar el número grande abre la cuenta (`renderWhy`) con cada término, hasta lo que queda
 hoy. El número tiene que poder auditarse desde la app, no de memoria. Es el **único**
@@ -71,13 +81,25 @@ sólo dentro de la cuenta que se abre al tocar el número. La app tampoco manda 
 configurar nada: el sobre fijado a mano es una opción válida y le alcanza con una
 etiqueta chica.
 
-## El sobrante no se acumula
+## El sobrante se reparte entre los días que faltan
+
+Hasta la v4.7.0 el sobrante quedaba anotado y nada más: ahorrar hoy no habilitaba gastar
+más mañana. **Eso cambió en la v5.0.0**, y no como una mejora suelta sino como
+consecuencia de que el diario ahora se calcula sobre lo que queda de verdad. Si el pool es
+"lo que entró menos todo lo anotado", entonces gastar de menos un día deja más para
+repartir, igual que gastar de más deja menos. Las dos mitades son la misma cuenta: no se
+puede tener una sin la otra.
+
+No es "arrastrar el sobrante" al día siguiente —el sobrante de hoy no se suma entero a
+mañana—: se reparte entre **todos** los días que quedan, así que un día frugal sube el
+diario apenas y un exceso lo baja apenas. La cuenta cierra sola: gastando exactamente el
+sobre todos los días, el número no se mueve nunca.
+
+`periodCalc()` sigue sin mirar `closed[]`, y no tiene por qué: lo que queda se calcula
+desde `items`, que es el registro de lo que pasó. `closed[]` es para el resumen.
 
 Al cerrar un día se guarda la diferencia entre el sobre y lo gastado, que puede ser
-positiva o negativa. **Queda anotado y nada más.** No se suma al día siguiente: ahorrar
-hoy no habilita gastar más mañana, y por eso `periodCalc()` no mira `closed[]` ni tiene
-por qué hacerlo. Si alguna vez se propone "arrastrar el sobrante", es un cambio de idea
-del proyecto, no una mejora.
+positiva o negativa, y **queda anotado**: es el registro de cómo vino cada día.
 
 `closeDays()` corre al abrir la app y al volver a ella (`visibilitychange`), y cierra
 todos los días del período que hayan quedado abiertos, incluidos los huecos del medio.
@@ -85,7 +107,7 @@ todos los días del período que hayan quedado abiertos, incluidos los huecos de
 medianoche. El día de hoy nunca se cierra.
 
 De cada día se guarda sólo `{date, envelope}`. El sobre es lo único irrecuperable después
-— el diario calculado se mueve con cada gasto único —, mientras que lo gastado se lee de
+— el diario calculado se mueve con cada gasto —, mientras que lo gastado se lee de
 `items` en cada render. Así, anotar hoy un café de ayer corrige el cierre de ayer en vez
 de dejarlo mintiendo. No guardar el `diff` es a propósito: sería una segunda fuente de
 verdad que se desincroniza.
@@ -137,8 +159,9 @@ sin enterarse.
 El sobre del ciclo:
 
 ```
-a repartir = sueldo − ahorro − transporte
-diarioBase = a repartir ÷ días del ciclo
+a repartir = sueldo − ahorro
+diarioBase = a repartir ÷ días del ciclo          (el plan, lo que se ve en Ajustes)
+diario     = (a repartir − todo lo anotado) ÷ días que faltan   (el número de hoy)
 ```
 
 El usuario fija **uno** de los dos —cuánto quiere ahorrar o cuánto quiere gastar por día—
@@ -146,13 +169,14 @@ y la app calcula el otro; es la misma ecuación despejada para cada lado y vive 
 lugar (`planDelCiclo`). Se guarda lo que el usuario escribió (`mode` y `target`), nunca el
 número derivado: guardar los dos sería una segunda fuente de verdad.
 
-Acá **no** se divide por los días que faltan como en los tramos a mano. Con un ahorro
-prometido, un diario que sube cada día se comería justamente el ahorro. Lo que sí baja el
-número son los gastos "Aparte": cada uno se reparte entre los días que quedaban **cuando
-se hizo** y descuenta desde ese día hasta el fin del ciclo. Repartirlo sobre los días que
-faltan hoy haría que el diario bajara solo un poco cada día sin que el usuario gaste nada.
+El ahorro prometido queda **afuera del sobre**, y por eso acá sí se divide por los días
+que faltan, igual que en los tramos a mano: gastar de más no puede comerse el ahorro, lo
+único que hace es bajar el diario de los días que quedan. La objeción vieja —"un diario
+que sube cada día se comería el ahorro"— valía cuando lo anotado no descontaba; ahora que
+descuenta, sube sólo si el usuario gastó menos de lo que tenía asignado, que es su plata.
+
 Así la cuenta cierra: gastando el sobre todos los días sale exactamente lo que había para
-repartir, y el ahorro queda.
+repartir, y el ahorro queda intacto.
 
 ### El ciclo parcial de arranque
 
@@ -214,19 +238,15 @@ cierre de días quedan intactos.
 
 Cada modo conserva su regla; lo único que se reemplaza es la plata:
 
-- **`'sueldo'`**: `diario = (saldo − transporte prorrateado) ÷ días desde el saldo hasta el
-  fin del ciclo`, fijo, y los "Aparte" posteriores lo bajan. Los anteriores no: esa plata
-  ya salió del bolsillo y el monto que cargó el usuario es lo que quedó después. El ahorro
-  prometido no aplica mientras rige el saldo — lo que hay es lo que hay.
-- **`'auto'`**: `pool = saldo − transporte prorrateado − aparte posteriores`, dividido por
-  los días que faltan, que es la regla del tramo. El ingreso del tramo queda guardado y sin
-  tocar. Con un saldo cargado hay diario **aunque nunca haya cargado los ingresos**: dijo
-  cuánta plata tiene, que es más concreto que lo que esperaba cobrar.
+- **`'sueldo'` y `'auto'`**: es la misma cuenta de siempre con otra plata de entrada.
+  `pool = saldo − todo lo anotado desde la fecha del saldo`, dividido por los días que
+  faltan. Lo anotado **antes** de esa fecha no cuenta: esa plata ya había salido del
+  bolsillo cuando el usuario sacó la foto. En modo sueldo el ahorro prometido no aplica
+  mientras rige el saldo — lo que hay es lo que hay —, y el ingreso del tramo queda
+  guardado y sin tocar. Con un saldo cargado hay diario **aunque nunca haya cargado los
+  ingresos**: dijo cuánta plata tiene, que es más concreto que lo que esperaba cobrar.
 - **`'manual'` y `'none'`**: el link no aparece. A mano el número lo fija el usuario y sin
   límite no hay diario que reemplazar.
-
-El transporte se prorratea sobre los días que el saldo cubre, igual que en el ciclo
-parcial: el presupuesto del período es de punta a punta y lo de antes ya se gastó.
 
 ### El panel
 
@@ -237,7 +257,7 @@ nunca de una fórmula repetida en el panel, que sería una copia que queda vieja
 
 **Sumar plata que entró después (una changa) es la misma acción y el mismo campo.** Al
 abrir el panel con un saldo vigente, el campo llega con lo que la app calcula que quedó
-—el saldo menos todo lo anotado desde entonces, hoy incluido, de las tres categorías— y una
+—el saldo menos todo lo anotado desde entonces, hoy incluido— y una
 línea que lo dice: "Cargaste $90.000 el 12/9 y desde entonces anotaste $34.000. Si entró
 plata extra, sumala." El usuario le suma los 20.000 y guarda. Un segundo modo "sumar" sería
 otro camino para el mismo número, y le pediría a la app que lleve un saldo vivo que no
@@ -250,6 +270,29 @@ registrar: es un número que dictó el usuario, no algo que pasó.
 Al tocar el número, la cuenta lo explica entero: de dónde salió la plata, con qué fecha se
 cargó y que cuando cobre vuelve solo. El número tiene que poder auditarse desde la app.
 
+## Llegaste a $0
+
+Es el **único popup además del de primer uso**, y está por la única razón que lo justifica:
+cuando lo anotado se comió todo lo que había para repartir y todavía faltan días, el número
+que la app existe para mostrar dejó de existir. No hay pantalla que dibujar detrás.
+
+> Llegaste a $0
+> Se acabó lo que tenías anotado para llegar al 7/9. ¿Cuánta plata te queda?
+
+Un solo campo, el efecto a la vista mientras se escribe, y **"ahora no" siempre a mano**:
+nunca bloquea la app. Lo que se guarda al confirmar es **el saldo de siempre**
+(`state.saldo`), así que no hay ningún mecanismo nuevo: el diario recalcula desde hoy hasta
+el próximo cobro con la cuenta de "La plata que hay ahora". Es la misma acción que el link
+de abajo del número, ofrecida en el momento en que hace falta.
+
+Ocultarlo lo corre **un día**, no lo apaga: `state.cero` guarda la fecha en que se ocultó y
+mañana vuelve, porque el número sigue en cero. En `'manual'` y `'none'` no aparece nunca —
+no hay pool que se pueda acabar.
+
+Que este cartel exista no reabre la puerta a los popups. El aviso de exportar sigue siendo
+un bloque en la pantalla y no un cartel, porque ahí la app **interrumpe para sugerir**;
+acá interrumpe porque no puede seguir.
+
 ## El modo sin límite
 
 `dailyMode: 'none'` es un modo real, no una variante cosmética: hay gente que quiere
@@ -258,10 +301,10 @@ que queda y pasa a ser **lo gastado hoy**, y desaparecen el sobre diario, la bar
 proporción, la cuenta que se abre al tocar el número, la tira semanal, el sobrante del
 período y los tramos con sus ingresos, que no se piden ni se muestran.
 
-Ahí "gastado hoy" es **todo lo anotado hoy** (`totalOn`), no sólo `diario` (`spentOn`),
-y los ahorros también. Sin sobre no hay bolsillos distintos de los que salga cada cosa:
-separar el transporte del resto en ese número sería contar mal. Las categorías siguen existiendo y siguen separando
-los totales del mes, que es donde ganan algo.
+Ahí "gastado hoy" es lo mismo que en todos lados: **todo lo anotado hoy** (`totalOn`). Ya
+no existe un `spentOn` que mire sólo `diario` — hay un solo sobre y de ahí sale cada cosa.
+Las categorías siguen existiendo y siguen separando los totales del mes, que es donde ganan
+algo.
 
 `dailyInfo()` devuelve `ready:false` en este modo, así que `closeDays()` no cierra ni un
 día: sin sobre conocido no hay diferencia que anotar. Todo lo demás —las tres categorías,
@@ -314,44 +357,32 @@ true, queda en true.
 **Una instalación nueva arranca vacía.** Los gastos de ejemplo que había cableados en
 `seed()` se fueron: le aparecían como propios a cualquiera que abriera la app.
 
-Las cuatro categorías no son decorativas, cada una sale de un bolsillo distinto. Adentro
-del código se llaman como siempre; en pantalla van con el nombre de la derecha, que se
-entiende sin saber cómo está hecha la app:
+Las tres categorías **no cambian la cuenta**: las tres descuentan del mismo sobre, y están
+para poder mirar después en qué se fue la plata. Adentro del código se llaman como siempre;
+en pantalla van con el nombre de la derecha, que se entiende sin saber cómo está hecha la
+app:
 
-- `diario` → **"Del día"**. Sale del sobre del día (café, kiosco, almuerzo). Consume el
-  sobre de hoy y no toca el cálculo del período.
-- `transporte` → **"Transporte"**. Presupuesto aparte, definido por período
-  (`period.transport`). Lo que se descuenta del cálculo es el **presupuesto**, no lo
-  gastado: anotar un viaje no mueve el diario.
-- `unico` → **"Aparte"**. Compras puntuales que no deben romper el día (un cargador, un
-  repuesto). No salen del sobre de hoy, pero sí bajan el diario de todos los días que
-  quedan.
-- `ahorro` → **"Ahorros"**. Lo que se pagó con plata que **no es la del período** — una
-  compra grande con ahorros. Ver abajo.
+- `diario` → **"Del día"**. Café, kiosco, almuerzo.
+- `transporte` → **"Transporte"**. Los viajes. **No tiene presupuesto propio**: se anota y
+  descuenta como todo lo demás.
+- `unico` → **"Aparte"**. Compras puntuales, que pueden ser mucho más grandes que un día —
+  un cargador, unas zapatillas, una compu pagada con ahorros.
 
-### Los ahorros: plata que salió y no era de este período
+Que ninguna tenga trato especial es una decisión, y costó tres vueltas llegar a ella:
 
-Sin esta categoría, una compu de 1.000.000 anotada como "Aparte" contra un sueldo de
-850.000 deja el diario en cero y la app deja de servir para lo único que hace. Y no es un
-caso raro: cualquiera que se compre algo con ahorros rompe el cálculo del mes.
+- **Hubo un presupuesto de transporte** (`period.transport`, `salary.transport`) que se
+  descontaba por adelantado y hacía que anotar un viaje no moviera el diario. Se fue en el
+  schema 9: era un número que el usuario declaraba y que casi nunca coincidía con lo que
+  gastaba de verdad.
+- **Hubo una cuarta categoría, `ahorro`**, para la compra grande pagada con ahorros. Duró
+  una versión. El nombre daba a entender lo contrario de lo que hacía —"Ahorros" al lado de
+  gastos se lee como plata que entra— y `up8to9` la devuelve a `unico`.
 
-`ahorro` es el único gasto que **no mueve ningún número del sobre**: no consume el sobre de
-hoy (`spentOn` sigue mirando sólo `diario`), no baja el diario (`periodCalc` y `cicloCalc`
-filtran `unico` y nada más) y no descuenta del saldo del bolsillo (`saldoGastado` lo saltea:
-esa plata no salió de ahí). Sí cuenta como plata que salió: entra en `totalOn`, tiene su
-casilla en "Este mes" y **suma en el Total**. La verdad pesa más que el presupuesto — lo
-que no hace es castigar el día.
-
-Por eso es la única categoría sin acento: va en `--slate`, apagada. Con violeta, verde u
-ocre parecería que pesa como las otras tres.
-
-Es una **categoría y no un interruptor** adentro de "Aparte" porque elegir categoría es un
-toque que el usuario da igual: un cuarto botón no cuesta ningún toque de más, y escondido
-en un link no lo encontraría nadie. Los rótulos se achican en pantallas angostas
-(`max-width:370px`) en vez de acortarse: "Transp." no lo lee nadie.
-
-**Cuál de los gastos viejos salió de ahorros lo sabe el usuario y nadie más**: `up7to8` no
-reclasifica nada. Adivinarlo por el monto le cambiaría el diario de meses enteros.
+Lo que resolvía la categoría `ahorro` —que una compu de 1.000.000 contra un sueldo de
+850.000 deje el diario en cero y la app deje de servir— hoy lo resuelve el cartel de
+**"Llegaste a $0"**: en vez de esconder el gasto para que la cuenta cierre, la app admite
+que no cierra y pregunta cuánta plata hay de verdad. Es la misma idea de siempre, la verdad
+por encima de lo declarado, aplicada donde corresponde.
 
 El mismo criterio vale para el resto de los rótulos: "sobrante del período", "sobres
 diarios", "sale de", "únicos" son términos internos. En Ajustes, el período se llama
@@ -414,8 +445,8 @@ Ocultarlo lo corre un mes, no lo apaga: `nudged` guarda la fecha en que se ocult
 siguiente se cuenta desde ahí. Ocultarlo no se lleva el botón de exportar, que es fijo.
 Sin gastos anotados no aparece nunca, porque no hay nada que analizar. El texto que se
 copia es literal y está en `PROMPT_IA`: si se toca, se toca entero y a propósito. Ahí se le
-explican las cuatro categorías, y en particular que los `ahorro` no son gasto corriente:
-sin esa línea, una compra grande con ahorros le arruina el promedio por día a la IA.
+explican las tres categorías, y en particular que un `unico` grande —una compra pagada con
+ahorros— hay que mirarlo aparte: sin esa línea le arruina el promedio por día a la IA.
 
 ## Claro y oscuro
 
@@ -492,14 +523,13 @@ Permiso necesario en el token: **Gists: read and write**, nada más.
 El estado que se persiste (schema 6):
 
 ```json
-{ "schema": 8, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
-  "setup": true, "nudged": "",
+{ "schema": 9, "daily": 10000, "dailyMode": "auto", "weekStart": 1,
+  "setup": true, "nudged": "", "cero": "",
   "saldo": { "date": "2026-09-12", "amount": 90000 },
   "salary": { "amount": 950000, "payday": 28, "mode": "ahorro", "target": 350000,
-              "transport": 0,
               "first": { "start": "2026-08-28", "end": "2026-09-28",
                          "from": "2026-09-10", "amount": 240000 } },
-  "periods": [ { "id": 1, "start": "2026-08-05", "end": "2026-09-05", "transport": 60000,
+  "periods": [ { "id": 1, "start": "2026-08-05", "end": "2026-09-05",
                  "incomes": [ { "id": 1, "date": "2026-08-05", "amount": 900000, "note": "sueldo" } ] } ],
   "closed": [ { "date": "2026-08-05", "envelope": 25870 } ],
   "deleted": [], "updatedAt": 0,
@@ -531,10 +561,11 @@ La fusión entre dispositivos (`merge()`) sigue tres reglas, y están así a pro
 Los `closed` se unen por `date`, como los items: dos dispositivos sin conexión entre
 medio cerraron días distintos y los dos valen.
 
-`setup` y `nudged` quedan afuera de la regla 3 a propósito. `setup` es un o lógico: si en
+`setup`, `nudged` y `cero` quedan afuera de la regla 3 a propósito. `setup` es un o lógico: si en
 algún dispositivo ya se eligió cómo usar la app, se eligió, y el popup de primer uso no
-tiene por qué volver a aparecer en el otro. `nudged` se queda con la fecha más nueva, para
-que el aviso de exportar no reaparezca en el aparato donde ya se ocultó.
+tiene por qué volver a aparecer en el otro. `nudged` y `cero` se quedan con la fecha más nueva, para
+que ni el aviso de exportar ni el cartel de "llegaste a $0" reaparezcan en el aparato donde
+ya se ocultaron.
 
 `save()` acepta `save(false)` para persistir sin marcar tiempo ni disparar un push. Se usa
 después de traer datos remotos, para no rebotar el cambio de vuelta al Gist.
@@ -626,6 +657,12 @@ Las migraciones son escalones encadenados: `if(from < 2) d = up1to2(d); if(from 
 up2to3(d);`. Un schema 1 pasa por los dos de una y llega al formato actual. Al agregar un
 escalón nuevo, no tocar los anteriores.
 
+`up8to9` es el escalón que saca cosas en vez de agregarlas: se va el presupuesto de
+transporte (`normalize()` deja de reconstruir `transport`, y con eso desaparece de los
+tramos y del sueldo) y la categoría `ahorro` vuelve a `unico`. Reclasificar acá **sí**
+corresponde, a diferencia de `up7to8`: el destino es uno solo y no hay nada que adivinar.
+Lo anotado en transporte queda donde está — son gastos de verdad y siguen contando.
+
 `up7to8` no toca un solo gasto: la categoría `ahorro` es nueva, pero cuál de los que ya
 están anotados salió de ahorros no se puede deducir. El escalón existe igual porque un
 valor nuevo en `cat` obliga a subir el schema — el `normalize()` viejo colapsaría `ahorro`
@@ -658,6 +695,11 @@ mantiene: nunca completar con datos que el usuario no cargó.
 reconstruye el objeto campo por campo, así que una versión vieja de la app que lea datos
 nuevos no ignora lo que no conoce: lo borra, y después lo sube así al Gist. Subir el
 número hace que esa versión se bloquee en vez de destruir el campo.
+
+**Sacar un campo también obliga a subirlo.** Una versión vieja que lea datos del schema 9
+esperaría `transport` y lo daría por cero, que es justo el número que cambia el diario;
+bloquearse es mejor. Y al revés: esta versión lee datos viejos, los migra y descarta el
+campo a propósito.
 
 **Un valor nuevo en un campo que ya existe cuenta igual.** `dailyMode:'none'` obligó a
 subir a 5 aunque el campo estuviera desde el 2, `dailyMode:'sueldo'` a 6 y `cat:'ahorro'`
