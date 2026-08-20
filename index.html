@@ -474,7 +474,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v5.3.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v5.4.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -945,11 +945,24 @@ function trasLaFoto(x, s){
   return int(x.updatedAt) > int(s.ts);
 }
 
-/* Lo anotado hoy que sale del sobre de hoy. */
+/* Lo que sale del **sobre de un día**: lo del día y el transporte. Los "Aparte"
+   no — una compra puntual no puede romper el día: un cargador de 40.000 contra
+   un sobre de 5.500 dejaba el día en −34.500 y la app dejaba de decir nada.
+   Bajan el diario de todos los días que quedan, que es para lo que existe la
+   categoría, y por eso entran en el pool ya el mismo día en que se anotan.
+
+   Las tres siguen descontando de la misma plata; lo único distinto es **de qué
+   sobre sale cada una**. */
+const delSobre = iso => state.items
+  .filter(x => x.date === iso && x.cat !== 'unico')
+  .reduce((a,x)=>a+x.amount, 0);
+
+/* Lo anotado hoy que sale del sobre de hoy, sin lo que ya estaba adentro de la
+   foto. */
 function gastadoHoy(saldo){
   const t = todayISO();
   return state.items
-    .filter(x => x.date === t && trasLaFoto(x, saldo))
+    .filter(x => x.date === t && x.cat !== 'unico' && trasLaFoto(x, saldo))
     .reduce((a,x)=>a+x.amount, 0);
 }
 
@@ -1015,8 +1028,11 @@ function cicloCalc(fecha){
 
   /* Todo lo anotado desde que se reparte la plata, menos lo de hoy: eso lo
      descuenta el número grande. Las tres categorías salen del mismo sobre. */
+  /* Lo de hoy lo descuenta el número grande y no entra acá — salvo los
+     "Aparte", que no salen del sobre de hoy y se reparten desde ya. */
   const gastado = state.items
-    .filter(x => x.date >= repDesde && x.date < c.end && x.date !== ref && trasLaFoto(x, sal))
+    .filter(x => x.date >= repDesde && x.date < c.end
+             && (x.date !== ref || x.cat === 'unico') && trasLaFoto(x, sal))
     .reduce((a,x)=>a+x.amount, 0);
   const pool = reparto - gastado;
 
@@ -1359,7 +1375,8 @@ function periodCalc(p){
   const desde = saldo ? saldo.date : p.start;
   const entra = saldo ? saldo.amount : income;
   const gastado = state.items
-    .filter(x => x.date >= desde && x.date < p.end && x.date !== t && trasLaFoto(x, saldo))
+    .filter(x => x.date >= desde && x.date < p.end
+             && (x.date !== t || x.cat === 'unico') && trasLaFoto(x, saldo))
     .reduce((s,x)=>s+x.amount, 0);
   const pool = entra - gastado;
   const from = t < p.start ? p.start : t;          /* período futuro: cuenta entero */
@@ -1443,7 +1460,7 @@ function periodTally(p){
   if(!p) return null;
   const rows = state.closed
     .filter(c => c.date >= p.start && c.date < p.end)
-    .map(c => ({ date:c.date, envelope:c.envelope, spent:totalOn(c.date), diff:c.envelope - totalOn(c.date) }))
+    .map(c => ({ date:c.date, envelope:c.envelope, spent:delSobre(c.date), diff:c.envelope - delSobre(c.date) }))
     .sort((a,b2) => b2.date.localeCompare(a.date));
   return {
     rows,
@@ -1679,7 +1696,7 @@ function renderWeek(info){
   if(info.none) return;
   const today = todayISO(), daily = info.daily, days = weekDays();
   document.getElementById('strip').innerHTML = days.map(d=>{
-    const s = totalOn(d.iso), pct = Math.min(100, daily ? s/daily*100 : 0);
+    const s = delSobre(d.iso), pct = Math.min(100, daily ? s/daily*100 : 0);
     const future = d.iso > today;
     return `<div class="env ${d.iso===today?'today-env':''} ${daily&&s>daily?'overflow':''}" data-date="${d.iso}" title="${d.iso}">
       <span class="fill" style="height:${pct}%"></span>

@@ -31,13 +31,20 @@ plata: el bondi, el cargador y el café salen todos de ahí. No hay un presupues
 transporte que el usuario declare por adelantado ni una categoría que no cuente — la app
 no le cree a lo dicho, mira lo anotado.
 
+Lo único distinto entre ellas es **de qué sobre sale cada una**. "Del día" y "Transporte"
+salen del sobre de hoy; los **"Aparte" no**, porque una compra puntual no puede romper el
+día: un cargador de 40.000 contra un sobre de 5.500 dejaba el día en −34.500 y la app
+dejaba de decir nada. Bajan el diario de todos los días que quedan, y por eso entran en el
+pool ya el mismo día en que se anotan (`delSobre()` los saltea, el pool los incluye).
+
 Se recalcula en cada render, así que un gasto cargado a mitad de camino baja el diario del
 resto de los días al instante. Ese es el comportamiento central: si el usuario compra algo
 de 38.000, quiere ver ya cuánto le queda por día hasta el final.
 
 **Lo de hoy no entra en la resta**: lo descuenta el número grande (`diario − lo gastado
-hoy`), y restarlo también del pool sería contarlo dos veces. Lo cargado con fecha futura
-sí entra: ya se sabe que va a salir.
+hoy`), y restarlo también del pool sería contarlo dos veces. Las dos excepciones son los
+"Aparte" de hoy, que no salen del sobre de hoy y sí entran, y lo cargado con fecha futura:
+ya se sabe que va a salir.
 
 La fecha de fin es el día del próximo cobro: arranca el período siguiente y **no** cuenta
 como día de este. Hoy sí cuenta. El diario nunca se muestra negativo; si lo anotado se
