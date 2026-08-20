@@ -4,7 +4,7 @@
    VERSION se sube junto con la versión de la app en index.html. Cambiar este
    archivo es lo que hace que el navegador detecte que hay algo nuevo: si el
    contenido no cambia ni un byte, no hay actualización que ofrecer. */
-const VERSION = 'v5.2.0';
+const VERSION = 'v5.3.0';
 const CACHE = 'sobres-' + VERSION;
 
 /* Todo lo que la app necesita para arrancar sin red. Son rutas relativas para

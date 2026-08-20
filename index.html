@@ -474,7 +474,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v5.2.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v5.3.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -822,7 +822,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <script>
 const KEY = 'sobres.v1';
-const SCHEMA = 10;
+const SCHEMA = 11;
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
 const plain = n => new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n||0);
 const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -928,16 +928,40 @@ function saldoDe(start, end){
    desde que se cargó, hoy incluido. Sale del bolsillo lo de las tres
    categorías, así que las tres restan. Es una sugerencia para el campo, nunca
    un número que la app use para calcular: el saldo lo dice el usuario. */
+/* ¿Este gasto salió **después** de la foto?
+
+   La foto se saca a una hora, no a un día. Lo que ya estaba anotado esa misma
+   mañana está adentro del monto que dijo el usuario —si a las 17 dice "tengo
+   100.000", los 45.000 del mediodía ya salieron de ahí—, así que restarlo otra
+   vez lo cuenta dos veces y el día arranca en rojo. Por eso `saldo` guarda
+   `ts`, el momento en que se cargó, y se compara contra el `updatedAt` del
+   gasto, que es cuándo se anotó.
+
+   Un gasto con fecha anterior a la foto nunca cuenta, se haya anotado cuando se
+   haya anotado: esa plata ya no estaba. */
+function trasLaFoto(x, s){
+  if(!s) return true;
+  if(x.date !== s.date) return x.date > s.date;
+  return int(x.updatedAt) > int(s.ts);
+}
+
+/* Lo anotado hoy que sale del sobre de hoy. */
+function gastadoHoy(saldo){
+  const t = todayISO();
+  return state.items
+    .filter(x => x.date === t && trasLaFoto(x, saldo))
+    .reduce((a,x)=>a+x.amount, 0);
+}
+
 function saldoGastado(){
   const s = state.saldo;
   if(!s) return 0;
   /* Las tres categorías salen del mismo bolsillo: lo que anotaste desde que
      cargaste la foto es plata que ya no tenés. */
   return state.items
-    .filter(x => x.date >= s.date && x.date <= todayISO())
+    .filter(x => x.date <= todayISO() && trasLaFoto(x, s))
     .reduce((a,x)=>a+x.amount, 0);
 }
-const saldoRestante = () => Math.max(0, (state.saldo ? state.saldo.amount : 0) - saldoGastado());
 
 /* El diario del ciclo que contiene `fecha`.
 
@@ -992,7 +1016,7 @@ function cicloCalc(fecha){
   /* Todo lo anotado desde que se reparte la plata, menos lo de hoy: eso lo
      descuenta el número grande. Las tres categorías salen del mismo sobre. */
   const gastado = state.items
-    .filter(x => x.date >= repDesde && x.date < c.end && x.date !== ref)
+    .filter(x => x.date >= repDesde && x.date < c.end && x.date !== ref && trasLaFoto(x, sal))
     .reduce((a,x)=>a+x.amount, 0);
   const pool = reparto - gastado;
 
@@ -1037,6 +1061,8 @@ function cicloCalc(fecha){
              día en que se ocultó el cartel de "llegaste a $0".
    schema 10: agrega salary.cobrado (el ciclo cuyo cobro ya confirmó el usuario)
              y salary.pospuesto (el día en que dijo "todavía no").
+   schema 11: agrega saldo.ts, el momento en que se cargó la foto. Sin la hora
+             no se puede saber qué gastos del mismo día son anteriores.
    migrate() es la única puerta de entrada: localStorage, Gist y respaldos
    importados pasan por acá. Si el dato viene de un schema más nuevo que el
    que entiende esta copia de la app, no se toca: se avisa y listo. */
@@ -1062,6 +1088,7 @@ function migrate(raw){
   if(from < 8) d = up7to8(d);
   if(from < 9) d = up8to9(d);
   if(from < 10) d = up9to10(d);
+  if(from < 11) d = up10to11(d);
   return {ok:true, from, migrated:from < SCHEMA, state:normalize(d)};
 }
 
@@ -1152,6 +1179,14 @@ function up9to10(d){
     salary: { ...s, cobrado: cicloDe(todayISO(), int(s.payday) || 1).start, pospuesto:'' } };
 }
 
+/* `ts:0` y nada más: no hay forma de saber a qué hora se cargó una foto vieja,
+   e inventarla haría desaparecer gastos que sí hay que contar. Con cero, una
+   foto de antes se comporta como venía — todo lo del día cuenta — y la primera
+   que se cargue ya lleva la hora. */
+function up10to11(d){
+  return { ...d, schema:11, saldo: d.saldo ? { ...d.saldo, ts:0 } : d.saldo };
+}
+
 /* El sueldo se reconstruye campo por campo, como todo lo demás. Si viene roto o
    a medias queda en null, y ahí el modo sueldo muestra "—" con una línea de qué
    falta en vez de inventar un número. */
@@ -1177,7 +1212,8 @@ function normSalary(s){
    hay desde cuándo repartirla, así que queda en null. */
 function normSaldo(s){
   if(!s || typeof s !== 'object' || Array.isArray(s) || !s.date) return null;
-  return { date:String(s.date).slice(0,10), amount:Math.max(0, int(s.amount)) };
+  return { date:String(s.date).slice(0,10), amount:Math.max(0, int(s.amount)),
+           ts:Math.max(0, int(s.ts)) };
 }
 
 function normalize(d){
@@ -1323,7 +1359,7 @@ function periodCalc(p){
   const desde = saldo ? saldo.date : p.start;
   const entra = saldo ? saldo.amount : income;
   const gastado = state.items
-    .filter(x => x.date >= desde && x.date < p.end && x.date !== t)
+    .filter(x => x.date >= desde && x.date < p.end && x.date !== t && trasLaFoto(x, saldo))
     .reduce((s,x)=>s+x.amount, 0);
   const pool = entra - gastado;
   const from = t < p.start ? p.start : t;          /* período futuro: cuenta entero */
@@ -1542,7 +1578,7 @@ function render(){
    sin repetir ninguna cifra; el resto se ve al tocar. */
 function renderToday(info){
   const today = todayISO();
-  const daily = info.daily, spent = totalOn(today), left = daily - spent;
+  const daily = info.daily, spent = gastadoHoy(info.saldo), left = daily - spent;
   const el = document.getElementById('todayLeft');
   const bar = document.getElementById('todayBar');
   const caret = document.getElementById('todayCaret');
@@ -1592,7 +1628,7 @@ function renderWhy(info){
   if(!whyOpen) return;
 
   const r = (k, n, cls) => `<div class="why-row${cls?' '+cls:''}"><span>${k}</span><span class="n">${n}</span></div>`;
-  const c = info.calc, p = info.p, spent = totalOn(todayISO());
+  const c = info.calc, p = info.p, spent = gastadoHoy(info.saldo);
   const rows = [];
 
   if(info.manual){
@@ -1974,14 +2010,18 @@ let saldoAbierto = false;
    de la cuenta es una que queda vieja. No se guarda nada. */
 function saldoPrueba(monto){
   const previo = state.saldo;
-  state.saldo = { date: todayISO(), amount: monto };
+  state.saldo = { date: todayISO(), amount: monto, ts: Date.now() };
   try{ return dailyInfo(); } finally{ state.saldo = previo; }
 }
 
-/* Lo que la app calcula que queda hoy, y que es la base de "Sumarlo". */
+/* Lo que la app calcula que te queda ahora mismo: lo que hay para repartir
+   menos lo que ya salió hoy. Es lo que dice la línea del panel y la base de
+   "Sumarlo", y sale de la misma cuenta que el diario — con dos reglas
+   distintas, la frase no cerraba ("anotaste 45.170: te quedan 100.000"). */
 function saldoHay(){
   const i = dailyInfo();
-  return Math.max(0, i.ciclo ? i.ciclo.pool : i.calc ? i.calc.pool : 0);
+  const pool = i.ciclo ? i.ciclo.pool : i.calc ? i.calc.pool : 0;
+  return Math.max(0, pool - gastadoHoy(i.saldo));
 }
 
 /* Nadie elige a ciegas: los dos botones muestran su número antes de tocarlos. */
@@ -2049,7 +2089,7 @@ function guardarSaldo(fn){
   const el = document.getElementById('saldoAmount');
   if(el.value.trim() === '') return;      /* vacío no borra lo que ya había */
   const monto = Math.max(0, parseNum(el.value));
-  state.saldo = { date: todayISO(), amount: Math.max(0, fn(monto)) };
+  state.saldo = { date: todayISO(), amount: Math.max(0, fn(monto)), ts: Date.now() };
   saldoAbierto = false;
   save(); render();
 }
@@ -2173,7 +2213,7 @@ milesInput(document.getElementById('ceroAmount'));
 document.getElementById('ceroOk').onclick = () => {
   const el = document.getElementById('ceroAmount');
   if(el.value.trim() === '') return;
-  state.saldo = { date: todayISO(), amount: Math.max(0, parseNum(el.value)) };
+  state.saldo = { date: todayISO(), amount: Math.max(0, parseNum(el.value)), ts: Date.now() };
   state.cero = '';
   save(); render();
 };
