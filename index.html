@@ -474,7 +474,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v5.4.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v6.0.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -945,14 +945,12 @@ function trasLaFoto(x, s){
   return int(x.updatedAt) > int(s.ts);
 }
 
-/* Lo que sale del **sobre de un día**: lo del día y el transporte. Los "Aparte"
-   no — una compra puntual no puede romper el día: un cargador de 40.000 contra
-   un sobre de 5.500 dejaba el día en −34.500 y la app dejaba de decir nada.
-   Bajan el diario de todos los días que quedan, que es para lo que existe la
-   categoría, y por eso entran en el pool ya el mismo día en que se anotan.
+/* Cómo vino un día, para la tira de la semana y el resumen de días cerrados:
+   lo del día y el transporte, sin los "Aparte". Las tres categorías bajan el
+   diario igual —eso lo hace el pool—, pero una compra puntual no es el ritmo
+   de ese día y pintarla contra el sobre dejaba la semana ilegible.
 
-   Las tres siguen descontando de la misma plata; lo único distinto es **de qué
-   sobre sale cada una**. */
+   Es un **registro**, no una cuenta: el número grande sale del pool. */
 const delSobre = iso => state.items
   .filter(x => x.date === iso && x.cat !== 'unico')
   .reduce((a,x)=>a+x.amount, 0);
@@ -1028,11 +1026,11 @@ function cicloCalc(fecha){
 
   /* Todo lo anotado desde que se reparte la plata, menos lo de hoy: eso lo
      descuenta el número grande. Las tres categorías salen del mismo sobre. */
-  /* Lo de hoy lo descuenta el número grande y no entra acá — salvo los
-     "Aparte", que no salen del sobre de hoy y se reparten desde ya. */
+  /* Todo lo anotado, lo de hoy incluido: el número grande ya no es "lo que
+     queda del sobre de hoy" sino "cuánto puedo gastar por día de acá al fin",
+     así que cada gasto lo baja apenas en vez de hundir el día. */
   const gastado = state.items
-    .filter(x => x.date >= repDesde && x.date < c.end
-             && (x.date !== ref || x.cat === 'unico') && trasLaFoto(x, sal))
+    .filter(x => x.date >= repDesde && x.date < c.end && trasLaFoto(x, sal))
     .reduce((a,x)=>a+x.amount, 0);
   const pool = reparto - gastado;
 
@@ -1375,8 +1373,7 @@ function periodCalc(p){
   const desde = saldo ? saldo.date : p.start;
   const entra = saldo ? saldo.amount : income;
   const gastado = state.items
-    .filter(x => x.date >= desde && x.date < p.end
-             && (x.date !== t || x.cat === 'unico') && trasLaFoto(x, saldo))
+    .filter(x => x.date >= desde && x.date < p.end && trasLaFoto(x, saldo))
     .reduce((s,x)=>s+x.amount, 0);
   const pool = entra - gastado;
   const from = t < p.start ? p.start : t;          /* período futuro: cuenta entero */
@@ -1605,7 +1602,12 @@ function renderToday(info){
   const parcial = !!(info.ciclo && info.ciclo.parcial);
   badge.hidden = !info.manual && !parcial && !info.saldo;
   badge.textContent = info.saldo ? 'saldo' : info.manual ? 'a mano' : 'parcial';
-  document.getElementById('todayLabel').textContent = info.none ? 'Gastaste hoy' : 'Queda hoy';
+  /* Tres números distintos según el modo, y el rótulo lo dice: sin límite es
+     lo gastado, a mano es lo que queda del sobre que fijó el usuario, y con un
+     período es cuánto se puede gastar por día de acá al fin — ése se recalcula
+     con cada gasto en vez de dejar el día en rojo. */
+  document.getElementById('todayLabel').textContent =
+    info.none ? 'Gastaste hoy' : info.manual ? 'Queda hoy' : 'Por día';
   /* Sin límite no hay cuenta que abrir: el número es la suma de lo anotado. */
   caret.hidden = !!info.none;
   if(info.none){
@@ -1617,21 +1619,32 @@ function renderToday(info){
     return;
   }
 
-  /* Sin sobre conocido no hay saldo: con los datos bloqueados el número decía
-     que el usuario se pasó, y lo único que pasa es que no se puede calcular. */
+  /* Sin sobre conocido no hay número: con los datos bloqueados decía que el
+     usuario se pasó, y lo único que pasa es que no se puede calcular. */
   if(!info.ready && (blocked || !spent)){
     el.textContent = '—';
     el.className = 'big num idle';
     bar.hidden = true;
-  }else{
+  }else if(info.manual){
     el.textContent = fmt(left);
     el.className = 'big num ' + (left < 0 ? 'over' : left < daily*0.25 ? 'warn' : 'ok');
     bar.hidden = !daily;
     bar.className = 'bar' + (left < 0 ? ' over' : '');
     document.getElementById('todayFill').style.width =
       (daily ? Math.min(100, spent/daily*100) : 0) + '%';
+  }else{
+    /* El número ya trae descontado lo de hoy, así que nunca queda negativo: un
+       gasto grande lo baja, no lo hunde. La barra sigue diciendo cuánto llevás
+       hoy contra lo que te toca por día. */
+    el.textContent = fmt(daily);
+    el.className = 'big num ' + (daily ? (spent > daily ? 'warn' : 'ok') : 'over');
+    bar.hidden = !daily;
+    bar.className = 'bar' + (spent > daily ? ' over' : '');
+    document.getElementById('todayFill').style.width =
+      (daily ? Math.min(100, spent/daily*100) : 0) + '%';
   }
-  document.getElementById('todayNote').textContent = info.ready ? '' : (info.why || '');
+  document.getElementById('todayNote').textContent = !info.ready ? (info.why || '')
+    : (!info.manual && !info.none && spent) ? `Hoy anotaste ${fmt(spent)}.` : '';
   caret.textContent = (whyOpen ? '▴' : '▾') + ' la cuenta';
 }
 
@@ -1683,9 +1696,14 @@ function renderWhy(info){
     else if(c.pool <= 0) rows.push(`<div class="why-note">Se acabó lo que había para repartir en este tramo.</div>`);
   }
 
-  if(info.ready){
+  /* A mano el número es lo que queda del sobre de hoy, así que la cuenta
+     termina restando lo gastado. En los otros modos lo de hoy ya está adentro
+     de "lo que anotaste", y repetirlo acá sería contarlo dos veces. */
+  if(info.ready && info.manual){
     rows.push(r('Gastaste hoy', '− ' + fmt(spent)));
     rows.push(r('Queda hoy', fmt(info.daily - spent), 'res'));
+  }else if(info.ready){
+    rows.push(r('Hoy anotaste', fmt(spent), 'res'));
   }
   panel.innerHTML = rows.join('');
 }
@@ -2037,8 +2055,7 @@ function saldoPrueba(monto){
    distintas, la frase no cerraba ("anotaste 45.170: te quedan 100.000"). */
 function saldoHay(){
   const i = dailyInfo();
-  const pool = i.ciclo ? i.ciclo.pool : i.calc ? i.calc.pool : 0;
-  return Math.max(0, pool - gastadoHoy(i.saldo));
+  return Math.max(0, i.ciclo ? i.ciclo.pool : i.calc ? i.calc.pool : 0);
 }
 
 /* Nadie elige a ciegas: los dos botones muestran su número antes de tocarlos. */
