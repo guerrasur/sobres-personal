@@ -270,9 +270,50 @@ registrar: es un número que dictó el usuario, no algo que pasó.
 Al tocar el número, la cuenta lo explica entero: de dónde salió la plata, con qué fecha se
 cargó y que cuando cobre vuelve solo. El número tiene que poder auditarse desde la app.
 
+## El cobro se confirma, no arranca solo
+
+Al pasar el día de cobro la app no da por hecho que la plata entró: pregunta. Dos pasos,
+dos botones y nada que leer.
+
+> **¿Ya cobraste?**
+> Anotaste que hoy es tu día de pago. Arranca un ciclo nuevo, hasta el 20/9.
+> [ Ya cobré ] [ Todavía no ]
+
+> **¿Cuánto cobraste?** — con el campo precargado en lo que tenía anotado
+> Tenías anotado $850.000. Si esta vez fue otra cosa, cambialo: queda como tu sueldo
+> para los ciclos que vienen.
+
+**Lo que no hace es frenar el ciclo.** Los ciclos se derivan de la fecha y ésa es una regla
+que no se toca: decir "todavía no" sólo corre la pregunta a mañana (`salary.pospuesto`
+guarda el día), el ciclo corre igual y el diario sigue saliendo del sueldo configurado. Si
+la plata todavía no está, para eso está el link de cargar lo que hay.
+
+**Confirmar un monto distinto pisa el sueldo** (`salary.amount`) para los ciclos que
+vienen: si cobrás otra cosa, ésa pasa a ser la referencia. No se guarda un cobro por ciclo
+— sería una segunda fuente de verdad al lado de `salary.amount`, y el modo sueldo existe
+justamente porque no hay filas que mantener. Confirmar con el campo vacío no lo pisa con un
+cero: deja lo que había.
+
+`salary.cobrado` guarda el inicio del ciclo ya confirmado, así que se pregunta **una vez por
+ciclo**. Un sueldo recién configurado —desde el popup de primer uso o desde Ajustes— nace
+con el ciclo en curso ya dado por cobrado: el usuario lo acaba de configurar, no hay nada
+que preguntarle hasta el próximo. `up9to10` hace lo mismo con los datos que ya existían.
+
+Si la app estuvo cerrada unos días, la pregunta espera y aparece al abrirla, con la fecha
+real del ciclo ("Arrancó un ciclo nuevo el 6/9") en vez de decir "hoy".
+
+Sólo vive en `dailyMode:'sueldo'`. En los tramos a mano el "próximo cobro" es el fin del
+tramo y arrancar el siguiente es otra cosa —hay que cargar fechas e ingresos—, así que ahí
+no hay cartel.
+
+**Un cartel por vez**: mientras el cobro está sin confirmar, el de "llegaste a $0" espera
+su turno. Preguntar cuánta plata queda antes de saber si cobró sería preguntar dos veces lo
+mismo.
+
 ## Llegaste a $0
 
-Es el **único popup además del de primer uso**, y está por la única razón que lo justifica:
+Es el otro de los dos carteles que interrumpen (con el del cobro, arriba, y el de primer
+uso), y está por la única razón que lo justifica:
 cuando lo anotado se comió todo lo que había para repartir y todavía faltan días, el número
 que la app existe para mostrar dejó de existir. No hay pantalla que dibujar detrás.
 
@@ -527,6 +568,7 @@ El estado que se persiste (schema 6):
   "setup": true, "nudged": "", "cero": "",
   "saldo": { "date": "2026-09-12", "amount": 90000 },
   "salary": { "amount": 950000, "payday": 28, "mode": "ahorro", "target": 350000,
+              "cobrado": "2026-08-28", "pospuesto": "",
               "first": { "start": "2026-08-28", "end": "2026-09-28",
                          "from": "2026-09-10", "amount": 240000 } },
   "periods": [ { "id": 1, "start": "2026-08-05", "end": "2026-09-05",
@@ -656,6 +698,11 @@ datos de uno actualizado; pisarlos es la forma más rápida de perderlos. La app
 Las migraciones son escalones encadenados: `if(from < 2) d = up1to2(d); if(from < 3) d =
 up2to3(d);`. Un schema 1 pasa por los dos de una y llega al formato actual. Al agregar un
 escalón nuevo, no tocar los anteriores.
+
+`up9to10` da por cobrado el ciclo que está corriendo: el usuario ya venía usando la app con
+él, así que preguntarle "¿ya cobraste?" apenas actualiza sería preguntar por algo que pasó
+hace semanas. La pregunta arranca en el ciclo siguiente, el primero que la app va a ver
+nacer.
 
 `up8to9` es el escalón que saca cosas en vez de agregarlas: se va el presupuesto de
 transporte (`normalize()` deja de reconstruir `transport`, y con eso desaparece de los

@@ -359,7 +359,11 @@ button.mini{font-size:12px;padding:5px 10px}
 .onb-alt:hover{color:var(--violet);opacity:1}
 .onb-alt.on{color:var(--violet);text-decoration:none}
 .onb-alt.on::before{content:'✓ '}
-#onbOk,#ceroOk{width:100%;margin-top:20px;padding:13px 18px;font-size:15px}
+#onbOk,#ceroOk,#cobroOk{width:100%;margin-top:20px;padding:13px 18px;font-size:15px}
+/* dos caminos, dos botones del mismo tamaño: no hay uno "correcto" */
+.onb-acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+.onb-acts[hidden]{display:none}
+.onb-acts button{width:100%;padding:13px 6px;font-size:15px}
 .onb-alts[hidden]{display:none}
 /* el día de cobro: una línea de texto con un campo adentro, no un formulario */
 .onb-dia{font-size:13px;color:var(--ink-soft);margin-top:14px}
@@ -470,7 +474,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v5.0.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v5.1.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -766,6 +770,28 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
   </div>
 </div>
 
+<!-- El ciclo nuevo no arranca solo: la app lo propone y el usuario confirma.
+     Dos pasos y dos botones, sin nada que leer: "¿ya cobraste?" y "¿cuánto?".
+     Decir "todavía no" no frena el ciclo —los ciclos se derivan de la fecha y
+     eso no se toca—: sólo corre la pregunta a mañana, y mientras tanto queda
+     el link de siempre para cargar la plata que hay. -->
+<div class="onb" id="cobro" hidden>
+  <div class="onb-card" role="dialog" aria-modal="true" aria-labelledby="cobroTitle">
+    <h2 id="cobroTitle"></h2>
+    <input class="onb-num" id="cobroAmount" type="text" inputmode="numeric" placeholder="0"
+           aria-labelledby="cobroTitle cobroWhat" hidden>
+    <div class="onb-what" id="cobroWhat"></div>
+    <div class="onb-acts" id="cobroPaso1">
+      <button id="cobroSi">Ya cobré</button>
+      <button class="ghost" id="cobroNo">Todavía no</button>
+    </div>
+    <div id="cobroPaso2" hidden>
+      <button id="cobroOk">Confirmar</button>
+      <div class="onb-links"><button class="link" id="cobroBack">volver</button></div>
+    </div>
+  </div>
+</div>
+
 <!-- Se acabó lo que había para repartir y todavía faltan días. Es el único
      popup además del de primer uso, y por la única razón que lo justifica: el
      número que la app existe para mostrar dejó de existir, así que no hay
@@ -795,7 +821,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <script>
 const KEY = 'sobres.v1';
-const SCHEMA = 9;
+const SCHEMA = 10;
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
 const plain = n => new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n||0);
 const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -1002,6 +1028,8 @@ function cicloCalc(fecha){
              salary.transport) y la categoría 'ahorro', que vuelve a 'unico'.
              Las tres categorías descuentan del mismo sobre. Agrega cero, el
              día en que se ocultó el cartel de "llegaste a $0".
+   schema 10: agrega salary.cobrado (el ciclo cuyo cobro ya confirmó el usuario)
+             y salary.pospuesto (el día en que dijo "todavía no").
    migrate() es la única puerta de entrada: localStorage, Gist y respaldos
    importados pasan por acá. Si el dato viene de un schema más nuevo que el
    que entiende esta copia de la app, no se toca: se avisa y listo. */
@@ -1026,6 +1054,7 @@ function migrate(raw){
   if(from < 7) d = up6to7(d);
   if(from < 8) d = up7to8(d);
   if(from < 9) d = up8to9(d);
+  if(from < 10) d = up9to10(d);
   return {ok:true, from, migrated:from < SCHEMA, state:normalize(d)};
 }
 
@@ -1105,6 +1134,17 @@ function up8to9(d){
     items: d.items.map(x => (x && x.cat === 'ahorro') ? { ...x, cat:'unico' } : x) };
 }
 
+/* El ciclo que corre ahora se da por cobrado: el usuario ya venía usando la
+   app con él, así que preguntarle "¿ya cobraste?" apenas actualiza sería
+   preguntar por algo que pasó hace semanas. La pregunta arranca en el ciclo
+   siguiente, que es el primero que la app va a ver nacer. */
+function up9to10(d){
+  const s = d.salary;
+  if(!s || !s.payday) return { ...d, schema:10 };
+  return { ...d, schema:10,
+    salary: { ...s, cobrado: cicloDe(todayISO(), int(s.payday) || 1).start, pospuesto:'' } };
+}
+
 /* El sueldo se reconstruye campo por campo, como todo lo demás. Si viene roto o
    a medias queda en null, y ahí el modo sueldo muestra "—" con una línea de qué
    falta en vez de inventar un número. */
@@ -1116,6 +1156,9 @@ function normSalary(s){
     payday: Math.min(31, Math.max(1, int(s.payday) || 1)),
     mode: s.mode === 'diario' ? 'diario' : 'ahorro',
     target: Math.max(0, int(s.target)),
+    /* qué ciclo ya confirmó que cobró, y qué día dijo "todavía no" */
+    cobrado: s.cobrado ? String(s.cobrado).slice(0,10) : '',
+    pospuesto: s.pospuesto ? String(s.pospuesto).slice(0,10) : '',
     first: (f && f.start && f.end && f.from)
       ? { start:String(f.start).slice(0,10), end:String(f.end).slice(0,10),
           from:String(f.from).slice(0,10), amount:Math.max(0, int(f.amount)) }
@@ -1442,6 +1485,7 @@ function render(){
   renderToday(info);
   renderWhy(info);
   renderSaldo(info);
+  renderCobro();
   renderCero(info);
   renderWeek(info);
   renderTally(info);
@@ -1749,7 +1793,11 @@ function renderSalary(info){
 function conSueldo(fn){
   if(blocked) return;
   if(!state.salary) state.salary = { amount:0, payday:Number(todayISO().slice(8,10)),
-                                     mode:'ahorro', target:0, first:null };
+                                     mode:'ahorro', target:0, first:null,
+                                     /* el ciclo que corre lo acaba de configurar él: no
+                                        hay nada que preguntarle hasta el próximo cobro */
+                                     cobrado:cicloDe(todayISO(), Number(todayISO().slice(8,10))).start,
+                                     pospuesto:'' };
   fn(state.salary);
   save(); render();
 }
@@ -1962,6 +2010,73 @@ document.getElementById('saldoOff').onclick = () => {
   state.saldo = null; saldoAbierto = false; save(); render();
 };
 
+/* ---------- el cobro: el ciclo nuevo se confirma, no arranca solo ----------
+   Al pasar el día de cobro la app no da por hecho que la plata entró: pregunta.
+   Lo que **no** hace es frenar el ciclo — los ciclos se derivan de la fecha y
+   ésa es una regla que no se toca —, así que decir "todavía no" sólo corre la
+   pregunta a mañana; el diario sigue saliendo del sueldo configurado y, si la
+   plata todavía no está, para eso está el link de cargar lo que hay.
+
+   Confirmar un monto distinto **pisa el sueldo** para los ciclos que vienen: si
+   cobrás otra cosa, ésa pasa a ser la referencia. No se guarda un cobro por
+   ciclo — sería una segunda fuente de verdad al lado de `salary.amount`. */
+let cobroPaso = 1;
+
+function cicloACobrar(){
+  if(blocked || (estreno && !state.setup)) return null;
+  if(state.dailyMode !== 'sueldo') return null;
+  const s = state.salary;
+  if(!s || !s.amount || !s.payday) return null;
+  const c = cicloDe(todayISO(), s.payday);
+  if(s.cobrado === c.start) return null;         /* ya confirmó este ciclo */
+  if(s.pospuesto === todayISO()) return null;    /* hoy dijo que todavía no */
+  return c;
+}
+
+function renderCobro(){
+  const c = cicloACobrar();
+  const box = document.getElementById('cobro');
+  if(!c){ box.hidden = true; cobroPaso = 1; return; }
+  if(box.hidden) cobroPaso = 1;                  /* se abre siempre por el principio */
+  box.hidden = false;
+  const uno = cobroPaso === 1;
+  const s = state.salary;
+  document.getElementById('cobroTitle').textContent = uno ? '¿Ya cobraste?' : '¿Cuánto cobraste?';
+  document.getElementById('cobroWhat').textContent = uno
+    ? (c.start === todayISO()
+        ? `Anotaste que hoy es tu día de pago. Arranca un ciclo nuevo, hasta el ${dm(c.end)}.`
+        : `Arrancó un ciclo nuevo el ${dm(c.start)} y va hasta el ${dm(c.end)}.`)
+    : `Tenías anotado ${fmt(s.amount)}. Si esta vez fue otra cosa, cambialo: queda como tu sueldo para los ciclos que vienen.`;
+  document.getElementById('cobroAmount').hidden = uno;
+  document.getElementById('cobroPaso1').hidden = !uno;
+  document.getElementById('cobroPaso2').hidden = uno;
+}
+
+document.getElementById('cobroSi').onclick = () => {
+  cobroPaso = 2;
+  document.getElementById('cobroAmount').value = plain(state.salary.amount);
+  renderCobro();
+};
+document.getElementById('cobroBack').onclick = () => { cobroPaso = 1; renderCobro(); };
+/* Ocultarlo lo corre un día: mañana vuelve a preguntar. */
+document.getElementById('cobroNo').onclick = () => {
+  state.salary = { ...state.salary, pospuesto: todayISO() };
+  save(); render();
+};
+document.getElementById('cobroOk').onclick = () => {
+  const monto = Math.max(0, parseNum(document.getElementById('cobroAmount').value));
+  const c = cicloDe(todayISO(), state.salary.payday);
+  state.salary = { ...state.salary,
+    /* vacío o cero: confirma lo que ya había, sin pisarlo con un 0 */
+    amount: monto > 0 ? monto : state.salary.amount,
+    cobrado: c.start, pospuesto: '' };
+  save(); render();
+};
+document.getElementById('cobroAmount').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') document.getElementById('cobroOk').click();
+});
+milesInput(document.getElementById('cobroAmount'));
+
 /* ---------- llegaste a $0 ----------
    Cuando lo anotado se comió todo lo que había para repartir y todavía faltan
    días, el diario es cero y el número grande deja de decir nada. Ahí sí la app
@@ -1977,7 +2092,8 @@ function renderCero(info){
     && info.ready && !info.manual && !!info.p
     && todayISO() < info.p.end
     && ceroPool(info) <= 0
-    && state.cero !== todayISO();
+    && state.cero !== todayISO()
+    && !cicloACobrar();          /* un cartel por vez: primero se confirma el cobro */
   if(box.hidden !== !toca && toca){
     document.getElementById('ceroAmount').value = '';
     document.getElementById('ceroOut').textContent = '';
@@ -2855,6 +2971,7 @@ function onbGuardarSueldo(saldo){
   state.salary = {
     amount: onbDatos.sueldo, payday: onbDatos.dia, mode: onbDatos.modo,
     target: onbDatos.target,
+    cobrado: c.actual.start, pospuesto: '',
     first: c.parcial ? { start:c.actual.start, end:c.actual.end, from:c.hoy,
                          amount:Math.max(0, int(saldo)) } : null
   };
