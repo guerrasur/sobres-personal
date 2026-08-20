@@ -474,7 +474,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v5.1.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v5.2.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -516,7 +516,8 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
            aria-labelledby="saldoTitle">
     <p class="box-copy saldo-what" id="saldoWhat"></p>
     <div class="tools">
-      <button class="mini" id="saldoOk">Guardar</button>
+      <button class="mini" id="saldoOk">Es lo que tengo</button>
+      <button class="mini" id="saldoMas">Sumarlo</button>
       <button class="ghost mini" id="saldoOff" hidden>Volver al cálculo de siempre</button>
     </div>
   </div>
@@ -834,10 +835,12 @@ const int = n => Math.round(Number(n)||0);
    milesInput más abajo); parseNum saca esos puntos antes de convertir a
    número, porque Number("10.000") los leería como decimales. */
 const parseNum = v => Number(String(v).replace(/\D/g,'')) || 0;
+/* El campo vacío se queda vacío, pero un 0 escrito es un 0: con `n ? … : ''`
+   no se podía dejar el ahorro en cero — el campo se borraba solo al teclear. */
 function milesInput(el){
   el.addEventListener('input', () => {
-    const n = parseNum(el.value);
-    el.value = n ? plain(n) : '';
+    if(el.value.trim() === ''){ el.value = ''; return; }
+    el.value = plain(parseNum(el.value));
   });
 }
 
@@ -947,7 +950,11 @@ const saldoRestante = () => Math.max(0, (state.saldo ? state.saldo.amount : 0) -
    es el número de hoy, que se mueve con lo que se anota. */
 function cicloCalc(fecha){
   const s = state.salary;
-  if(!s || !s.amount || !s.payday) return null;
+  /* Alcanza con el día de cobro: las fechas del ciclo salen de ahí. Sin sueldo
+     cargado el diario da cero, pero el período existe — y eso es lo que hace
+     que se pueda cargar la plata que hay cuando la configuración quedó a
+     medias, que es justo cuando más falta hace. */
+  if(!s || !s.payday) return null;
   const c = cicloDe(fecha, s.payday);
   const total = daysBetween(c.start, c.end);
   const f = s.first;
@@ -1349,7 +1356,11 @@ function dailyInfo(){
   if(state.dailyMode === 'sueldo'){
     const ciclo = cicloCalc(todayISO());
     if(!ciclo) return { daily:0, ready:false, manual:false, p:null, calc:null, ciclo:null,
-      why:'Falta cargar el sueldo y el día en que cobrás.' };
+      why:'Falta cargar el día en que cobrás.' };
+    /* Sin sueldo y sin plata cargada no hay número; el período sí existe, así
+       que el link para cargar lo que hay queda a mano. */
+    if(!state.salary.amount && !ciclo.saldo) return { daily:0, ready:false, manual:false, p, calc:null, ciclo,
+      why:'Falta cargar cuánto cobrás, o la plata que tenés ahora.' };
     if(ciclo.finished) return { daily:0, ready:false, manual:false, p, calc:null, ciclo,
       why:`Se terminó el ciclo el ${dm(ciclo.end)}.` };
     return { daily:ciclo.diario, ready:true, manual:false, p, calc:null, ciclo, saldo:ciclo.saldo };
@@ -1463,17 +1474,36 @@ aplicarTema();
 /* ---------- las dos vistas ----------
    Hoy es lo que se usa todos los días: el número, el formulario y lo anotado
    hoy. Todo lo demás vive en Resumen. Al abrir la app siempre se entra por Hoy. */
+/* En qué vista estamos. Los carteles que tapan la pantalla sólo salen en `Hoy`:
+   en `Resumen` el usuario está haciendo algo a propósito —y muchas veces está
+   justamente arreglando la configuración que hizo saltar el cartel—, así que
+   interrumpirlo ahí lo deja sin poder tocar nada. Cuando vuelve a Hoy, el
+   cartel lo espera. */
+let vista = 'hoy';
+
 function setView(v, scroll){
+  vista = v;
   document.getElementById('viewHoy').hidden = v !== 'hoy';
   document.getElementById('viewMas').hidden = v !== 'mas';
   document.getElementById('tabHoy').classList.toggle('on', v === 'hoy');
   document.getElementById('tabMas').classList.toggle('on', v === 'mas');
   if(scroll !== false) window.scrollTo(0,0);
+  renderCobro(); renderCero(dailyInfo());
 }
 document.getElementById('tabHoy').onclick = () => setView('hoy');
 document.getElementById('tabMas').onclick = () => setView('mas');
 
-/* ---------- render ---------- */
+/* ---------- render ----------
+   Los campos de configuración se escriben con `campo()` y no a mano: `render()`
+   corre por muchos motivos —una sincronización, volver a la app, anotar un
+   gasto, un cartel que aparece— y si pisa el input que el usuario tiene abierto
+   le borra lo que estaba tecleando y le devuelve el valor viejo. Era la razón
+   por la que el sueldo "volvía a 0" mientras se cambiaba. */
+function campo(id, valor){
+  const el = document.getElementById(id);
+  if(el && el !== document.activeElement) el.value = valor;
+}
+
 let whyOpen = false;
 let editId = null;
 
@@ -1496,10 +1526,10 @@ function render(){
   renderImport();
   renderNudge();
 
-  document.getElementById('cfgMode').value = state.dailyMode;
-  document.getElementById('cfgDaily').value = plain(state.daily);
+  campo('cfgMode', state.dailyMode);
+  campo('cfgDaily', plain(state.daily));
   document.getElementById('cfgDaily').disabled = blocked || state.dailyMode !== 'manual';
-  document.getElementById('cfgStart').value = state.weekStart;
+  campo('cfgStart', state.weekStart);
   /* Sin límite no hay tramos ni ingresos, y de cobro a cobro los tramos los
      arma la app: en los dos casos no se piden ni se muestran. */
   document.getElementById('boxPeriod').hidden = !!info.none || state.dailyMode === 'sueldo';
@@ -1742,8 +1772,8 @@ function renderPeriod(){
     `<option value="${x.id}">${dm(x.start)} → ${dm(x.end)}${cur&&x.id===cur.id?' · en curso':''}</option>`).join('');
   sel.value = String(editId);
   ['pStart','pEnd','incAdd','pDel'].forEach(id=>document.getElementById(id).disabled = blocked);
-  document.getElementById('pStart').value = p.start;
-  document.getElementById('pEnd').value = p.end;
+  campo('pStart', p.start);
+  campo('pEnd', p.end);
   document.getElementById('incDate').value = document.getElementById('incDate').value || p.start;
 
   document.getElementById('incList').innerHTML = p.incomes.length
@@ -1769,10 +1799,10 @@ function renderSalary(info){
   const s = state.salary;
   const campos = ['salAmount','salDia','salMode','salTarget'];
   campos.forEach(id => document.getElementById(id).disabled = blocked);
-  document.getElementById('salAmount').value = s ? plain(s.amount) : '';
-  document.getElementById('salDia').value = s ? String(s.payday) : '';
-  document.getElementById('salMode').value = s ? s.mode : 'ahorro';
-  document.getElementById('salTarget').value = s ? plain(s.target) : '';
+  campo('salAmount', s ? plain(s.amount) : '');
+  campo('salDia', s ? String(s.payday) : '');
+  campo('salMode', s ? s.mode : 'ahorro');
+  campo('salTarget', s ? plain(s.target) : '');
   document.getElementById('salTargetLabel').textContent =
     (s && s.mode === 'diario') ? 'Cuánto quiero gastar por día' : 'Cuánto quiero ahorrar';
 
@@ -1948,22 +1978,37 @@ function saldoPrueba(monto){
   try{ return dailyInfo(); } finally{ state.saldo = previo; }
 }
 
+/* Lo que la app calcula que queda hoy, y que es la base de "Sumarlo". */
+function saldoHay(){
+  const i = dailyInfo();
+  return Math.max(0, i.ciclo ? i.ciclo.pool : i.calc ? i.calc.pool : 0);
+}
+
+/* Nadie elige a ciegas: los dos botones muestran su número antes de tocarlos. */
 function saldoEfecto(){
   const el = document.getElementById('saldoWhat');
   const v = document.getElementById('saldoAmount').value.trim();
   if(v === ''){ el.textContent = ''; return; }
-  const info = saldoPrueba(Math.max(0, parseNum(v)));
-  const dias = info.p ? daysBetween(todayISO(), info.p.end) : 0;
-  /* Nadie elige a ciegas: el número que va a quedar se ve antes de confirmar. */
-  el.textContent = info.ready && dias > 0
-    ? `${fmt(info.daily)} por día · ${dias} ${dias===1?'día':'días'} hasta el ${dm(info.p.end)}`
-    : '';
+  const monto = Math.max(0, parseNum(v));
+  const linea = m => {
+    const i = saldoPrueba(m);
+    const dias = i.p ? daysBetween(todayISO(), i.p.end) : 0;
+    return i.ready && dias > 0 ? `${fmt(i.daily)} por día` : '—';
+  };
+  const hasta = () => {
+    const i = dailyInfo();
+    return i.p ? ` hasta el ${dm(i.p.end)}` : '';
+  };
+  el.innerHTML = `Es lo que tengo: <b>${esc(linea(monto))}</b>`
+    + `<br>Sumarlo a los ${esc(fmt(saldoHay()))}: <b>${esc(linea(saldoHay() + monto))}</b>${esc(hasta())}`;
 }
 
 /* El link sólo donde hay un diario calculado que reemplazar: a mano lo fija el
    usuario y sin límite no hay diario. */
 function renderSaldo(info){
   const modo = state.dailyMode === 'auto' || state.dailyMode === 'sueldo';
+  /* Con la configuración a medias el período igual existe, y el link tiene que
+     estar: es la forma de decirle a la app cuánta plata hay. */
   const puede = modo && !blocked && !!info.p && todayISO() < info.p.end;
   if(!puede) saldoAbierto = false;
   document.getElementById('saldoRow').hidden = !puede;
@@ -1974,8 +2019,8 @@ function renderSaldo(info){
   if(!saldoAbierto) return;
   document.getElementById('saldoOff').hidden = !info.saldo;
   document.getElementById('saldoHint').textContent = info.saldo
-    ? `Cargaste ${fmt(info.saldo.amount)} el ${dm(info.saldo.date)} y desde entonces anotaste ${fmt(saldoGastado())}. Si entró plata extra, sumala.`
-    : `Se reparte entre hoy y el ${dm(info.p.end)}, y desde hoy el diario sale de ahí.`;
+    ? `Cargaste ${fmt(info.saldo.amount)} el ${dm(info.saldo.date)} y desde entonces anotaste ${fmt(saldoGastado())}: te quedan ${fmt(saldoHay())}.`
+    : `Según lo anotado te quedan ${fmt(saldoHay())} para llegar al ${dm(info.p.end)}. Escribí un monto y elegí si es todo lo que tenés o si se suma.`;
   saldoEfecto();
 }
 
@@ -1984,9 +2029,9 @@ function renderSaldo(info){
 document.getElementById('saldoLink').onclick = () => {
   if(saldoAbierto){ saldoAbierto = false; render(); return; }
   const info = dailyInfo();
-  /* Llega con lo que la app calcula que quedó de la última carga, para que
-     sumarle una changa sea escribir un número y nada más. */
-  document.getElementById('saldoAmount').value = info.saldo ? plain(saldoRestante()) : '';
+  /* Arranca vacío: el número que se escribe es el monto de la acción que se
+     elija, y la línea de arriba ya dice cuánto hay. */
+  document.getElementById('saldoAmount').value = '';
   saldoAbierto = true;
   render();
   document.getElementById('saldoBox').scrollIntoView({ behavior:'smooth', block:'nearest' });
@@ -1997,13 +2042,19 @@ document.getElementById('saldoAmount').addEventListener('keydown', e=>{
   if(e.key === 'Enter') document.getElementById('saldoOk').click();
 });
 milesInput(document.getElementById('saldoAmount'));
-document.getElementById('saldoOk').onclick = () => {
+/* Los dos caminos guardan la misma foto: uno la reemplaza y el otro le suma a
+   lo que la app calcula que queda. `saldoHay()` se lee antes de tocar el
+   estado, porque después ya no sería lo mismo. */
+function guardarSaldo(fn){
   const el = document.getElementById('saldoAmount');
   if(el.value.trim() === '') return;      /* vacío no borra lo que ya había */
-  state.saldo = { date: todayISO(), amount: Math.max(0, parseNum(el.value)) };
+  const monto = Math.max(0, parseNum(el.value));
+  state.saldo = { date: todayISO(), amount: Math.max(0, fn(monto)) };
   saldoAbierto = false;
   save(); render();
-};
+}
+document.getElementById('saldoOk').onclick = () => guardarSaldo(m => m);
+document.getElementById('saldoMas').onclick = () => guardarSaldo(m => saldoHay() + m);
 /* Se vuelve al cálculo de siempre borrando la foto: no queda de registro,
    porque no hay nada que registrar — es un número que el usuario dictó. */
 document.getElementById('saldoOff').onclick = () => {
@@ -2023,7 +2074,7 @@ document.getElementById('saldoOff').onclick = () => {
 let cobroPaso = 1;
 
 function cicloACobrar(){
-  if(blocked || (estreno && !state.setup)) return null;
+  if(blocked || (estreno && !state.setup) || vista !== 'hoy') return null;
   if(state.dailyMode !== 'sueldo') return null;
   const s = state.salary;
   if(!s || !s.amount || !s.payday) return null;
@@ -2088,7 +2139,7 @@ const ceroPool = info => info.ciclo ? info.ciclo.pool
 
 function renderCero(info){
   const box = document.getElementById('cero');
-  const toca = !blocked && !(estreno && !state.setup)
+  const toca = !blocked && !(estreno && !state.setup) && vista === 'hoy'
     && info.ready && !info.manual && !!info.p
     && todayISO() < info.p.end
     && ceroPool(info) <= 0

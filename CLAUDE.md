@@ -250,18 +250,35 @@ Cada modo conserva su regla; lo único que se reemplaza es la plata:
 
 ### El panel
 
-Un solo campo y el efecto a la vista: mientras se escribe, la línea de abajo dice
-`$ 9.000 por día · 9 días hasta el 28/8`. Ese número **sale de la cuenta de verdad** —se
-prueba el saldo en el estado y se le pregunta el diario a `dailyInfo()`, sin guardar nada—,
-nunca de una fórmula repetida en el panel, que sería una copia que queda vieja.
+Un campo y **dos botones**: `Es lo que tengo` y `Sumarlo`. El primero reemplaza la foto, el
+segundo le suma el monto a lo que la app calcula que queda (`saldoHay()`, que es el pool).
+Los dos escriben el mismo `state.saldo`; lo único que cambia es la cuenta que se hace con
+lo escrito.
 
-**Sumar plata que entró después (una changa) es la misma acción y el mismo campo.** Al
-abrir el panel con un saldo vigente, el campo llega con lo que la app calcula que quedó
-—el saldo menos todo lo anotado desde entonces, hoy incluido— y una
-línea que lo dice: "Cargaste $90.000 el 12/9 y desde entonces anotaste $34.000. Si entró
-plata extra, sumala." El usuario le suma los 20.000 y guarda. Un segundo modo "sumar" sería
-otro camino para el mismo número, y le pediría a la app que lleve un saldo vivo que no
-lleva.
+Los dos botones **muestran su número antes de que los toques**:
+
+```
+Es lo que tengo: $ 2.941 por día
+Sumarlo a los $ 100.000: $ 8.823 por día hasta el 6/9
+```
+
+Esos números **salen de la cuenta de verdad** —se prueba el saldo en el estado y se le
+pregunta el diario a `dailyInfo()`, sin guardar nada—, nunca de una fórmula repetida en el
+panel, que sería una copia que queda vieja.
+
+Hubo una versión con un solo botón, en la que el campo llegaba precargado con lo que
+quedaba y sumar una changa era escribir el total nuevo. Era más chico pero no se entendía:
+el número precargado parecía un dato y no un punto de partida. Dos botones que dicen lo que
+hacen valen el espacio.
+
+El campo arranca **vacío**, y la línea de arriba dice cuánto hay: "Cargaste $100.000 el
+20/8 y desde entonces anotaste $34.000: te quedan $66.000."
+
+**El link está aunque la configuración esté a medias.** `cicloCalc()` sólo necesita el día
+de cobro para armar el ciclo: sin sueldo cargado el diario da cero, pero el período existe
+y el link aparece. Que la única forma de decirle a la app cuánta plata hay desaparezca
+justo cuando la configuración se rompió es dejar al usuario sin salida — pasó, y por eso
+esa guarda dice `!s.payday` y no `!s.amount`.
 
 Guardar con el campo vacío no hace nada: no borra lo que ya había. Para volver al cálculo
 de siempre está el botón que borra la foto — no queda de registro, porque no hay nada que
@@ -756,6 +773,25 @@ usuario un sobre diario que nunca pidió.
 La migración baja a disco con `save(false)`. Con `save()` a secas, un dispositivo que
 abre con datos viejos marcaría `updatedAt` a ahora y le ganaría la configuración al que
 ya está al día. Los cierres de `closeDays()` se persisten igual, por lo mismo.
+
+## Dos trampas de los carteles
+
+**Los carteles sólo salen en la vista `Hoy`.** El de "llegaste a $0" y el del cobro tapan
+la pantalla entera, y aparecían también sobre `Resumen` — donde el usuario está, muchas
+veces, arreglando justamente la configuración que hizo saltar el cartel. Ahí no se puede
+tocar nada: el cartel intercepta cada toque y la app queda trabada. `cicloACobrar()` y
+`renderCero()` miran `vista`, y `setView()` los vuelve a evaluar al cambiar de pestaña, así
+que el cartel espera en Hoy en vez de perseguir al usuario.
+
+**`render()` no pisa el campo que se está tecleando.** Los inputs de configuración se
+escriben con `campo(id, valor)`, que no toca el elemento si es `document.activeElement`.
+Sin eso, cualquier `render()` —una sincronización, volver a la app, anotar un gasto, un
+cartel que aparece— le borraba al usuario lo que estaba escribiendo y le devolvía el valor
+guardado. El síntoma era "el sueldo vuelve a 0 cuando lo cambio", y no era el guardado: era
+el render.
+
+Del mismo palo: `milesInput()` conserva un **0** escrito. Con `n ? plain(n) : ''` el campo
+se vaciaba solo al teclear un cero, y no había forma de dejar el ahorro en cero.
 
 ## Trampas de iOS ya resueltas — no reintroducir
 
