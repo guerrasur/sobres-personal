@@ -203,11 +203,24 @@ lleguen. Para eso, abajo del número grande hay un link chico —**reingresar lo
 queda**— que abre un panel de un solo campo.
 
 ```json
-"saldo": { "date": "2026-09-12", "amount": 90000 }
+"saldo": { "date": "2026-09-12", "amount": 90000, "ts": 1789200000000 }
 ```
 
-Es una **foto**: el día `date` el usuario tenía `amount` para llegar al fin. **No es un
-ingreso más que se suma al tramo**: reemplaza de dónde sale el diario desde ese día. La app
+Es una **foto**: el día `date`, a la hora `ts`, el usuario tenía `amount` para llegar al
+fin. **No es un ingreso más que se suma al tramo**: reemplaza de dónde sale el diario desde
+ese día.
+
+**La hora no es un detalle.** Si a las 17 alguien dice "tengo 100.000", los 45.000 que
+anotó al mediodía ya salieron de esa plata: volver a restarlos los cuenta dos veces y el
+día arranca en rojo — pasó, y es lo que obligó a agregar `ts`. `trasLaFoto()` compara el
+`ts` de la foto contra el `updatedAt` del gasto, que es cuándo se anotó, y sólo cuenta lo
+posterior. Un gasto con **fecha** anterior a la foto no cuenta nunca, se haya anotado
+cuando se haya anotado: esa plata ya no estaba.
+
+De ahí sale una regla que vale para toda la app: **lo que queda se calcula con una sola
+cuenta**. La línea del panel decía "anotaste $45.170: te quedan $100.000" porque los dos
+números salían de reglas distintas. `saldoHay()` es el pool menos lo gastado hoy, y de ahí
+salen la frase, el botón de sumar y el diario. La app
 no lleva el saldo sola —seguiría sin ser una app de contabilidad—; para actualizarlo se
 vuelve a cargar, que es justamente la acción que ofrece el link.
 
@@ -715,6 +728,11 @@ datos de uno actualizado; pisarlos es la forma más rápida de perderlos. La app
 Las migraciones son escalones encadenados: `if(from < 2) d = up1to2(d); if(from < 3) d =
 up2to3(d);`. Un schema 1 pasa por los dos de una y llega al formato actual. Al agregar un
 escalón nuevo, no tocar los anteriores.
+
+`up10to11` pone `ts` en cero y nada más: no hay forma de saber a qué hora se cargó una foto
+vieja, e inventarla haría desaparecer gastos que sí hay que contar. Con cero, una foto de
+antes se comporta como venía —todo lo del día cuenta— y la primera que se cargue ya lleva
+la hora.
 
 `up9to10` da por cobrado el ciclo que está corriendo: el usuario ya venía usando la app con
 él, así que preguntarle "¿ya cobraste?" apenas actualiza sería preguntar por algo que pasó
