@@ -223,18 +223,42 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .caret[hidden]{display:none}
 
 /* la cuenta, solo cuando se toca el número */
-/* el botón para recargar la plata, pegado al número: chico, redondeado y
-   fácil de encontrar, pero un solo elemento — no compite con el número. */
-.saldo-row{margin-top:6px}
-.chip-add{display:inline-flex;align-items:center;background:var(--violet-soft);border:1px solid var(--violet-line);
-  color:var(--violet);font-size:13px;font-weight:700;padding:7px 14px;border-radius:999px;touch-action:manipulation}
-.saldo-box{margin-top:12px}
-.saldo-box .num-in{font-size:20px;font-family:var(--mono);font-weight:700;padding:12px}
-.saldo-box .box-copy:empty{display:none}
+/* el botón para cargar la plata que hay: fijo, abajo y centrado, un solo
+   símbolo — así se encuentra sin que compita con el número ni el formulario. */
+.fab-row{position:fixed;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom));
+  display:flex;justify-content:center;z-index:15;pointer-events:none}
+.fab-row[hidden]{display:none}
+.fab-add{
+  pointer-events:auto;width:52px;height:52px;border-radius:50%;
+  background:var(--violet);color:var(--on-accent);border:none;
+  font-size:26px;font-weight:400;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 12px rgba(0,0,0,.28);touch-action:manipulation;
+}
+/* el panel sale desde abajo, con el mismo fondo opaco que los otros
+   carteles — pero éste no es obligatorio: se cierra tocando afuera o con
+   "cerrar", nunca tapa la app para siempre. */
+.sheet-overlay{
+  position:fixed;inset:0;z-index:20;overflow:auto;
+  display:flex;align-items:flex-end;justify-content:center;
+  background:var(--overlay);
+}
+.sheet-overlay[hidden]{display:none}
+.sheet{
+  width:100%;max-width:420px;background:var(--paper);
+  border:1px solid var(--line);border-radius:16px 16px 0 0;
+  padding:18px 20px calc(20px + env(safe-area-inset-bottom));
+  animation:sheet-up .18s ease-out;
+}
+@keyframes sheet-up{from{transform:translateY(18px);opacity:.6}to{transform:translateY(0);opacity:1}}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+.sheet .num-in{font-size:20px;font-family:var(--mono);font-weight:700;padding:12px}
+.sheet .box-copy:empty{display:none}
 .saldo-what{margin:10px 0 0;color:var(--violet)}
 /* los recordatorios de gastos fijos: una línea chica por cada uno, nunca un
    cartel — se pueden ignorar sin que la app insista. */
 .fijos-row{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.fijos-row[hidden]{display:none}
 .fijo-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft)}
 .fijo-item span{flex:1;min-width:0}
 .why{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:8px 14px 14px;margin-top:12px}
@@ -483,7 +507,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v6.1.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v6.2.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -510,31 +534,34 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
   <!-- Cargar la plata que hay ahora, sin pasar por Ajustes: faltan días para
        cobrar y lo que queda en el bolsillo no es el sueldo repartido desde el
-       principio. Va acá, pegado al número que cambia, y es un link chico —
-       abajo sigue el formulario, que es lo primero que se puede hacer. -->
-  <div class="saldo-row" id="saldoRow" hidden>
-    <button class="chip-add" id="saldoLink" aria-expanded="false" aria-controls="saldoBox">+ Cargar plata</button>
+       principio. Un botón fijo, abajo y centrado — no compite con el número
+       ni con el formulario, y abre un panel que sale desde abajo, como los
+       otros carteles de la app pero sin taparla: se cierra tocando afuera. -->
+  <div class="fab-row" id="saldoRow" hidden>
+    <button class="fab-add" id="saldoLink" aria-expanded="false" aria-controls="saldoBox">+</button>
   </div>
-  <div class="box saldo-box" id="saldoBox" hidden>
-    <div class="box-head">
-      <span class="eyebrow" id="saldoTitle">¿Cuánta plata tenés ahora?</span>
-      <button class="link" id="saldoClose" aria-label="Cerrar">cerrar</button>
-    </div>
-    <p class="box-copy" id="saldoHint"></p>
-    <input class="num-in" id="saldoAmount" type="text" inputmode="numeric" placeholder="0"
-           aria-labelledby="saldoTitle">
-    <p class="box-copy saldo-what" id="saldoWhat"></p>
-    <div class="tools">
-      <button class="mini" id="saldoOk">Es lo que tengo</button>
-      <button class="mini" id="saldoMas">Sumarlo</button>
-      <button class="ghost mini" id="saldoOff" hidden>Volver al cálculo de siempre</button>
+  <div class="sheet-overlay" id="saldoOverlay" hidden>
+    <div class="sheet" id="saldoBox" role="dialog" aria-modal="true" aria-labelledby="saldoTitle">
+      <div class="box-head">
+        <span class="eyebrow" id="saldoTitle">¿Cuánta plata tenés ahora?</span>
+        <button class="link" id="saldoClose" aria-label="Cerrar">cerrar</button>
+      </div>
+      <p class="box-copy" id="saldoHint"></p>
+      <input class="num-in" id="saldoAmount" type="text" inputmode="numeric" placeholder="0"
+             aria-labelledby="saldoTitle">
+      <p class="box-copy saldo-what" id="saldoWhat"></p>
+      <div class="tools">
+        <button class="mini" id="saldoOk">Es lo que tengo</button>
+        <button class="mini" id="saldoMas">Sumarlo</button>
+        <button class="ghost mini" id="saldoOff" hidden>Volver al cálculo de siempre</button>
+      </div>
     </div>
   </div>
 
   <!-- Gastos fijos que ya cargaste en Ajustes (alquiler, servicios,
-       suscripciones): cuando llega más o menos el día y todavía no anotaste
-       nada con ese nombre, una línea chica lo recuerda. Nunca resta nada
-       solo — es un atajo para anotar, no un presupuesto. -->
+       suscripciones): cuando llega más o menos el día y todavía no los
+       pagaste, una línea chica lo recuerda. Nunca resta nada sola — es un
+       atajo para anotar, no un presupuesto. -->
   <div class="fijos-row" id="fijosRow" hidden></div>
 
   <div class="why" id="why" hidden></div>
@@ -683,7 +710,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
          cree a lo dicho — sólo el nombre y cuándo, para recordar anotarlo. -->
     <div class="box" id="boxFijos">
       <div class="box-head"><span class="eyebrow">Gastos fijos</span></div>
-      <p class="box-copy">Alquiler, servicios, suscripciones. Si todavía no tenés ninguno, dejalo vacío.</p>
+      <p class="box-copy">Gastos que pagás siempre cerca del mismo día: alquiler, servicios, suscripciones. Te avisamos si para esa fecha todavía no lo pagaste. No hace falta cargar ninguno.</p>
       <div id="fijosList"></div>
       <div class="row" style="margin-top:12px">
         <div class="f-note"><label for="fijoName">Qué es</label><input id="fijoName" type="text" placeholder="alquiler"></div>
@@ -745,13 +772,6 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
               title="Importar los gastos que dictaste por voz">Importar por voz</button>
       <input type="file" id="impTxtFile" accept=".txt,text/plain" hidden>
       <button class="ghost mini" id="wipe">Borrar todo</button>
-    </div>
-
-    <!-- TEMPORAL: para probar el cartel de cobro y los recordatorios de
-         gastos fijos sin esperar la fecha real. Sacar este bloque y su
-         handler (buscar "TEMPORAL: probar avisos nuevos") una vez probado. -->
-    <div class="tools" id="debugTools">
-      <button class="ghost mini" id="debugPreview">Probar avisos nuevos (temporal)</button>
     </div>
 
     <!-- Lo dictado por voz: la línea de resultado y, si hay algo que confirmar,
@@ -823,7 +843,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <button class="ghost" id="cobroNo">Todavía no</button>
     </div>
     <div id="cobroPaso2" hidden>
-      <button class="link" id="cobroFechaLink">el próximo cobro cambia de fecha</button>
+      <button class="link" id="cobroFechaLink">cambiar la fecha del próximo cobro</button>
       <div class="daterow" id="cobroFechaRow" hidden>
         <input id="cobroFecha" type="date" aria-label="Próximo cobro">
       </div>
@@ -2175,20 +2195,20 @@ function saldoEfecto(){
    usuario y sin límite no hay diario. */
 function renderSaldo(info){
   const modo = state.dailyMode === 'auto' || state.dailyMode === 'sueldo';
-  /* Con la configuración a medias el período igual existe, y el link tiene que
-     estar: es la forma de decirle a la app cuánta plata hay. */
+  /* Con la configuración a medias el período igual existe, y el botón tiene
+     que estar: es la forma de decirle a la app cuánta plata hay. */
   const puede = modo && !blocked && !!info.p && todayISO() < info.p.end;
   if(!puede) saldoAbierto = false;
   document.getElementById('saldoRow').hidden = !puede;
-  document.getElementById('saldoBox').hidden = !saldoAbierto;
+  document.getElementById('saldoOverlay').hidden = !saldoAbierto;
   const link = document.getElementById('saldoLink');
   link.setAttribute('aria-expanded', String(saldoAbierto));
-  link.textContent = info.saldo ? '+ Cambiar lo que tengo' : '+ Cargar plata';
+  link.setAttribute('aria-label', info.saldo ? 'Cambiar lo que tenés' : 'Cargar la plata que tenés');
   if(!saldoAbierto) return;
   document.getElementById('saldoOff').hidden = !info.saldo;
   document.getElementById('saldoHint').textContent = info.saldo
-    ? `Cargaste ${fmt(info.saldo.amount)} el ${dm(info.saldo.date)} y desde entonces anotaste ${fmt(saldoGastado())}: te quedan ${fmt(saldoHay())}.`
-    : `Según lo anotado te quedan ${fmt(saldoHay())} para llegar al ${dm(info.p.end)}. Escribí un monto y elegí si es todo lo que tenés o si se suma.`;
+    ? `Cargaste ${fmt(info.saldo.amount)} el ${dm(info.saldo.date)} y desde entonces gastaste ${fmt(saldoGastado())}: te quedan ${fmt(saldoHay())}.`
+    : `Según lo que gastaste te quedan ${fmt(saldoHay())} para llegar al ${dm(info.p.end)}. Escribí cuánto tenés.`;
   saldoEfecto();
 }
 
@@ -2202,9 +2222,14 @@ document.getElementById('saldoLink').onclick = () => {
   document.getElementById('saldoAmount').value = '';
   saldoAbierto = true;
   render();
-  document.getElementById('saldoBox').scrollIntoView({ behavior:'smooth', block:'nearest' });
 };
 document.getElementById('saldoClose').onclick = () => { saldoAbierto = false; render(); };
+/* Tocar afuera del panel lo cierra, como cualquier hoja que sale desde
+   abajo — a diferencia de los carteles de cobro y de $0, éste no es
+   obligatorio: nada se pierde por cerrarlo sin elegir nada. */
+document.getElementById('saldoOverlay').addEventListener('click', e => {
+  if(e.target.id === 'saldoOverlay'){ saldoAbierto = false; render(); }
+});
 document.getElementById('saldoAmount').addEventListener('input', saldoEfecto);
 document.getElementById('saldoAmount').addEventListener('keydown', e=>{
   if(e.key === 'Enter') document.getElementById('saldoOk').click();
@@ -2258,9 +2283,9 @@ function renderFijos(info){
   if(!dev.length) return;
   row.innerHTML = dev.map(f => `
     <div class="fijo-item">
-      <span>${esc(f.name)} — ¿ya lo anotaste?</span>
+      <span>${esc(f.name)} — ¿ya lo pagaste?</span>
       <button class="ghost mini" data-fijo-log="${f.id}">Anotar</button>
-      <button class="link" data-fijo-x="${f.id}" aria-label="Ocultar hasta el mes que viene">×</button>
+      <button class="link" data-fijo-x="${f.id}">ahora no</button>
     </div>`).join('');
   row.querySelectorAll('[data-fijo-log]').forEach(b => b.onclick = () => {
     const f = state.fijos.find(x => String(x.id) === b.dataset.fijoLog);
@@ -2342,16 +2367,16 @@ function renderCobro(){
   document.getElementById('cobroTitle').textContent = uno ? '¿Ya cobraste?' : '¿Cuánto cobraste?';
   document.getElementById('cobroWhat').textContent = uno
     ? (c.start === todayISO()
-        ? `Anotaste que hoy es tu día de pago. Arranca un ciclo nuevo, hasta el ${dm(c.end)}.`
+        ? `Hoy es tu día de pago. Arranca un ciclo nuevo, hasta el ${dm(c.end)}.`
         : `Arrancó un ciclo nuevo el ${dm(c.start)} y va hasta el ${dm(c.end)}.`)
-    : `Tenías anotado ${fmt(s.amount)}. Si esta vez fue otra cosa, cambialo: queda como tu sueldo para los ciclos que vienen.`;
+    : `Tenías cargado ${fmt(s.amount)}. Si cobraste otra cosa, cambialo acá: queda como tu sueldo para los ciclos que vienen.`;
   document.getElementById('cobroAmount').hidden = uno;
   document.getElementById('cobroPaso1').hidden = !uno;
   document.getElementById('cobroPaso2').hidden = uno;
   if(uno) return;
   document.getElementById('cobroFechaRow').hidden = !cobroFechaAbierta;
   document.getElementById('cobroFechaLink').textContent =
-    cobroFechaAbierta ? 'sigue el día de siempre' : 'el próximo cobro cambia de fecha';
+    cobroFechaAbierta ? 'usar la fecha de siempre' : 'cambiar la fecha del próximo cobro';
   const fEl = document.getElementById('cobroFecha');
   const natural = cicloDe(todayISO(), s.payday).end;
   if(!fEl.value) fEl.value = natural;
@@ -2737,19 +2762,6 @@ botonCopiar(document.getElementById('nudgeCopy'), document.getElementById('nudge
 document.getElementById('wipe').onclick = () => {
   if(!confirm('Se borran todos los gastos anotados. ¿Seguro?')) return;
   state = { ...state, deleted:[...(state.deleted||[]), ...state.items.map(x=>Number(x.id))], items:[], closed:[] };
-  save(); render();
-};
-
-/* TEMPORAL: probar avisos nuevos, sin esperar la fecha real. Fuerza el
-   cartel de "¿Ya cobraste?" (si hay sueldo configurado) y un recordatorio de
-   gasto fijo (crea uno de prueba si todavía no hay ninguno cargado). Sacar
-   este handler y el botón #debugPreview del HTML una vez probado. */
-document.getElementById('debugPreview').onclick = () => {
-  if(state.salary && state.salary.amount) state.salary = { ...state.salary, cobrado:'', pospuesto:'' };
-  state.fijos = state.fijos.length
-    ? state.fijos.map(f => ({ ...f, silenced:'' }))
-    : [{ id:uid(), name:'prueba', day:1, silenced:'' }];
-  setView('hoy');
   save(); render();
 };
 
