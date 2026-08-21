@@ -223,12 +223,20 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .caret[hidden]{display:none}
 
 /* la cuenta, solo cuando se toca el número */
-/* el link para recargar la plata, pegado al número: chico y sin caja */
-.saldo-row{margin-top:2px}
+/* el botón para recargar la plata, pegado al número: chico, redondeado y
+   fácil de encontrar, pero un solo elemento — no compite con el número. */
+.saldo-row{margin-top:6px}
+.chip-add{display:inline-flex;align-items:center;background:var(--violet-soft);border:1px solid var(--violet-line);
+  color:var(--violet);font-size:13px;font-weight:700;padding:7px 14px;border-radius:999px;touch-action:manipulation}
 .saldo-box{margin-top:12px}
 .saldo-box .num-in{font-size:20px;font-family:var(--mono);font-weight:700;padding:12px}
 .saldo-box .box-copy:empty{display:none}
 .saldo-what{margin:10px 0 0;color:var(--violet)}
+/* los recordatorios de gastos fijos: una línea chica por cada uno, nunca un
+   cartel — se pueden ignorar sin que la app insista. */
+.fijos-row{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.fijo-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft)}
+.fijo-item span{flex:1;min-width:0}
 .why{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:8px 14px 14px;margin-top:12px}
 .why[hidden]{display:none}
 .why-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:5px 0;font-size:13px}
@@ -381,6 +389,7 @@ h2{font-size:18px;font-weight:700;letter-spacing:-.01em}
 .tag.transporte{background:var(--teal-soft);color:var(--teal)}
 .tag.unico{background:var(--ochre-soft);color:var(--ochre)}
 .tag.ingreso{background:var(--teal-soft);color:var(--teal)}
+.tag.fijo{background:var(--paper-2);color:var(--ink-soft);border:1px solid var(--line)}
 .item .edit{
   flex:1;min-width:0;display:flex;align-items:flex-start;gap:10px;
   background:none;border:none;padding:0;margin:0;font:inherit;color:inherit;
@@ -474,7 +483,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v6.0.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v6.1.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -504,7 +513,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
        principio. Va acá, pegado al número que cambia, y es un link chico —
        abajo sigue el formulario, que es lo primero que se puede hacer. -->
   <div class="saldo-row" id="saldoRow" hidden>
-    <button class="link" id="saldoLink" aria-expanded="false" aria-controls="saldoBox">reingresar lo que me queda</button>
+    <button class="chip-add" id="saldoLink" aria-expanded="false" aria-controls="saldoBox">+ Cargar plata</button>
   </div>
   <div class="box saldo-box" id="saldoBox" hidden>
     <div class="box-head">
@@ -521,6 +530,12 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <button class="ghost mini" id="saldoOff" hidden>Volver al cálculo de siempre</button>
     </div>
   </div>
+
+  <!-- Gastos fijos que ya cargaste en Ajustes (alquiler, servicios,
+       suscripciones): cuando llega más o menos el día y todavía no anotaste
+       nada con ese nombre, una línea chica lo recuerda. Nunca resta nada
+       solo — es un atajo para anotar, no un presupuesto. -->
+  <div class="fijos-row" id="fijosRow" hidden></div>
 
   <div class="why" id="why" hidden></div>
 
@@ -663,6 +678,20 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       </div>
     </div>
 
+    <!-- Alquiler, servicios, suscripciones: gastos que se repiten cada mes,
+         casi siempre el mismo día. No se declara un monto — la app no le
+         cree a lo dicho — sólo el nombre y cuándo, para recordar anotarlo. -->
+    <div class="box" id="boxFijos">
+      <div class="box-head"><span class="eyebrow">Gastos fijos</span></div>
+      <p class="box-copy">Alquiler, servicios, suscripciones. Si todavía no tenés ninguno, dejalo vacío.</p>
+      <div id="fijosList"></div>
+      <div class="row" style="margin-top:12px">
+        <div class="f-note"><label for="fijoName">Qué es</label><input id="fijoName" type="text" placeholder="alquiler"></div>
+        <div class="f-date"><label for="fijoDay">Día del mes</label><input class="num-in" id="fijoDay" type="text" inputmode="numeric" placeholder="10"></div>
+      </div>
+      <div class="tools"><button class="mini" id="fijoAdd">Agregar</button></div>
+    </div>
+
     <div class="cfg">
       <div><label for="cfgMode">Cuánto por día</label>
         <select id="cfgMode">
@@ -716,6 +745,13 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
               title="Importar los gastos que dictaste por voz">Importar por voz</button>
       <input type="file" id="impTxtFile" accept=".txt,text/plain" hidden>
       <button class="ghost mini" id="wipe">Borrar todo</button>
+    </div>
+
+    <!-- TEMPORAL: para probar el cartel de cobro y los recordatorios de
+         gastos fijos sin esperar la fecha real. Sacar este bloque y su
+         handler (buscar "TEMPORAL: probar avisos nuevos") una vez probado. -->
+    <div class="tools" id="debugTools">
+      <button class="ghost mini" id="debugPreview">Probar avisos nuevos (temporal)</button>
     </div>
 
     <!-- Lo dictado por voz: la línea de resultado y, si hay algo que confirmar,
@@ -787,6 +823,10 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <button class="ghost" id="cobroNo">Todavía no</button>
     </div>
     <div id="cobroPaso2" hidden>
+      <button class="link" id="cobroFechaLink">el próximo cobro cambia de fecha</button>
+      <div class="daterow" id="cobroFechaRow" hidden>
+        <input id="cobroFecha" type="date" aria-label="Próximo cobro">
+      </div>
       <button id="cobroOk">Confirmar</button>
       <div class="onb-links"><button class="link" id="cobroBack">volver</button></div>
     </div>
@@ -822,7 +862,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <script>
 const KEY = 'sobres.v1';
-const SCHEMA = 11;
+const SCHEMA = 12;
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
 const plain = n => new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n||0);
 const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -891,6 +931,20 @@ function cicloDe(fecha, payday){
   return fecha >= esteMes
     ? { start: esteMes, end: diaDeCobro(y, m+1, payday) }
     : { start: diaDeCobro(y, m-1, payday), end: esteMes };
+}
+
+/* Corrige un solo borde de ciclo cuando el cobro real no cae el día de
+   siempre — sin tocar `payday`, que sigue rigiendo todos los demás. Se
+   guarda al confirmar un cobro (ver el cartel de "¿Ya cobraste?") como
+   `salary.nextOverride: {natural, actual}` y se consume solo: el próximo
+   cobro que se confirma lo vuelve a limpiar, así que nunca corre los
+   ciclos "para siempre" — sólo el que el usuario dijo que cambiaba. */
+function cicloEfectivo(fecha, payday){
+  const c = cicloDe(fecha, payday);
+  const o = state.salary && state.salary.nextOverride;
+  if(!o) return c;
+  return { start: c.start === o.natural ? o.actual : c.start,
+           end:   c.end   === o.natural ? o.actual : c.end };
 }
 
 /* Lo que se reparte por día en un ciclo de `dias` días, y cuánto queda al
@@ -990,7 +1044,7 @@ function cicloCalc(fecha){
      que se pueda cargar la plata que hay cuando la configuración quedó a
      medias, que es justo cuando más falta hace. */
   if(!s || !s.payday) return null;
-  const c = cicloDe(fecha, s.payday);
+  const c = cicloEfectivo(fecha, s.payday);
   const total = daysBetween(c.start, c.end);
   const f = s.first;
   /* El ciclo parcial de arranque: se configuró la app con el ciclo ya empezado,
@@ -1077,6 +1131,10 @@ function cicloCalc(fecha){
              y salary.pospuesto (el día en que dijo "todavía no").
    schema 11: agrega saldo.ts, el momento en que se cargó la foto. Sin la hora
              no se puede saber qué gastos del mismo día son anteriores.
+   schema 12: agrega fijos[], los recordatorios de gastos que se repiten cada
+             mes (alquiler, servicios, suscripciones), y salary.nextOverride,
+             la corrección puntual de la fecha del próximo cobro cuando no cae
+             el día de siempre.
    migrate() es la única puerta de entrada: localStorage, Gist y respaldos
    importados pasan por acá. Si el dato viene de un schema más nuevo que el
    que entiende esta copia de la app, no se toca: se avisa y listo. */
@@ -1084,7 +1142,7 @@ function cicloCalc(fecha){
 function blankState(){
   return { schema:SCHEMA, daily:10000, dailyMode:'manual', weekStart:1,
            setup:false, nudged:'', cero:'', salary:null, saldo:null,
-           periods:[], closed:[], deleted:[], updatedAt:0, items:[] };
+           periods:[], closed:[], deleted:[], updatedAt:0, items:[], fijos:[] };
 }
 
 function migrate(raw){
@@ -1103,6 +1161,7 @@ function migrate(raw){
   if(from < 9) d = up8to9(d);
   if(from < 10) d = up9to10(d);
   if(from < 11) d = up10to11(d);
+  if(from < 12) d = up11to12(d);
   return {ok:true, from, migrated:from < SCHEMA, state:normalize(d)};
 }
 
@@ -1201,6 +1260,14 @@ function up10to11(d){
   return { ...d, schema:11, saldo: d.saldo ? { ...d.saldo, ts:0 } : d.saldo };
 }
 
+/* `fijos:[]`: no hay forma de deducir de los gastos ya anotados cuáles son
+   un alquiler o una suscripción que se repite — eso lo carga el usuario a
+   propósito, en Ajustes. `salary.nextOverride` no necesita tocarse acá:
+   `normSalary()` ya lo reconstruye en `null` cuando no viene en los datos. */
+function up11to12(d){
+  return { ...d, schema:12, fijos:[] };
+}
+
 /* El sueldo se reconstruye campo por campo, como todo lo demás. Si viene roto o
    a medias queda en null, y ahí el modo sueldo muestra "—" con una línea de qué
    falta en vez de inventar un número. */
@@ -1218,8 +1285,32 @@ function normSalary(s){
     first: (f && f.start && f.end && f.from)
       ? { start:String(f.start).slice(0,10), end:String(f.end).slice(0,10),
           from:String(f.from).slice(0,10), amount:Math.max(0, int(f.amount)) }
-      : null
+      : null,
+    /* La corrección puntual del próximo cobro: qué fecha predecía el día de
+       siempre (`natural`) y cuál es la real (`actual`). Se consume sola al
+       confirmar el cobro de ese ciclo — ver cicloEfectivo(). */
+    nextOverride: normNextOverride(s.nextOverride)
   };
+}
+
+function normNextOverride(o){
+  if(!o || typeof o !== 'object' || !o.natural || !o.actual) return null;
+  const natural = String(o.natural).slice(0,10), actual = String(o.actual).slice(0,10);
+  return actual === natural ? null : { natural, actual };
+}
+
+/* Los gastos que se repiten cada mes (alquiler, servicios, suscripciones):
+   sólo el nombre y el día aproximado, nunca un monto — eso lo dicta lo
+   anotado, no lo que el usuario declaró de antemano. `silenced` guarda desde
+   cuándo se ocultó el recordatorio, para que no vuelva a molestar hasta el
+   ciclo o el mes que viene. */
+function normFijos(arr){
+  return (Array.isArray(arr) ? arr : [])
+    .filter(f => f && String(f.name||'').trim() && f.day)
+    .map(f => ({ id:f.id ?? uid(), name:String(f.name).trim().slice(0,40),
+                 day:Math.min(31, Math.max(1, int(f.day))),
+                 silenced: f.silenced ? String(f.silenced).slice(0,10) : '' }))
+    .slice(0,20);
 }
 
 /* La plata que el usuario dijo tener, con el día en que lo dijo. Sin fecha no
@@ -1254,6 +1345,7 @@ function normalize(d){
     cero: d.cero ? String(d.cero).slice(0,10) : '',
     salary: normSalary(d.salary),
     saldo: normSaldo(d.saldo),
+    fijos: normFijos(d.fijos),
     periods,
     closed: (Array.isArray(d.closed) ? d.closed : [])
       .filter(c => c && c.date)
@@ -1325,7 +1417,7 @@ function block(schema, where){
     + (where==='gist'
         ? 'No se tocó nada y se pausó la sincronización para no pisarlos. Actualizá Sobres en este dispositivo (recargá con la app cerrada) y volvé a entrar.'
         : 'No se tocó nada. Actualizá Sobres en este dispositivo (recargá con la app cerrada) y volvé a entrar.');
-  document.querySelectorAll('#add,.cat,#otroDia,#incAdd,#pNew,#pDel,#wipe,#impBtn,#impTxtBtn,#syncNow,#cfgMode,#cfgDaily,#cfgStart,#pStart,#pEnd,#pSel,#salAmount,#salDia,#salMode,#salTarget')
+  document.querySelectorAll('#add,.cat,#otroDia,#incAdd,#pNew,#pDel,#wipe,#impBtn,#impTxtBtn,#syncNow,#cfgMode,#cfgDaily,#cfgStart,#pStart,#pEnd,#pSel,#salAmount,#salDia,#salMode,#salTarget,#fijoName,#fijoDay,#fijoAdd')
     .forEach(el => el.disabled = true);
 }
 
@@ -1565,6 +1657,8 @@ function render(){
   renderToday(info);
   renderWhy(info);
   renderSaldo(info);
+  renderFijos(info);
+  renderFijosAjustes();
   renderCobro();
   renderCero(info);
   renderWeek(info);
@@ -1898,7 +1992,7 @@ function conSueldo(fn){
                                      /* el ciclo que corre lo acaba de configurar él: no
                                         hay nada que preguntarle hasta el próximo cobro */
                                      cobrado:cicloDe(todayISO(), Number(todayISO().slice(8,10))).start,
-                                     pospuesto:'' };
+                                     pospuesto:'', nextOverride:null };
   fn(state.salary);
   save(); render();
 }
@@ -2089,7 +2183,7 @@ function renderSaldo(info){
   document.getElementById('saldoBox').hidden = !saldoAbierto;
   const link = document.getElementById('saldoLink');
   link.setAttribute('aria-expanded', String(saldoAbierto));
-  link.textContent = info.saldo ? 'cambiar lo que me queda' : 'reingresar lo que me queda';
+  link.textContent = info.saldo ? '+ Cambiar lo que tengo' : '+ Cargar plata';
   if(!saldoAbierto) return;
   document.getElementById('saldoOff').hidden = !info.saldo;
   document.getElementById('saldoHint').textContent = info.saldo
@@ -2135,6 +2229,82 @@ document.getElementById('saldoOff').onclick = () => {
   state.saldo = null; saldoAbierto = false; save(); render();
 };
 
+/* ---------- gastos fijos: recordar, nunca restar ----------
+   Alquiler, servicios, suscripciones: cosas que se pagan casi siempre el
+   mismo día. `state.fijos` sólo guarda el nombre y el día — nunca un monto,
+   porque un monto declarado de antemano es el presupuesto que este proyecto
+   ya sacó dos veces (ver CLAUDE.md). Cerca del día, si todavía no hay un
+   gasto anotado con ese nombre en lo que va del período, aparece una línea
+   con un atajo para anotarlo. No cambia el diario ni lo anticipa. */
+function fijosDebidos(info){
+  if(!state.fijos.length || blocked) return [];
+  const t = todayISO();
+  const day = +t.slice(8,10);
+  const desde = info.p ? info.p.start : (t.slice(0,7)+'-01');
+  return state.fijos.filter(f => {
+    if(day < f.day) return false;
+    if(f.silenced === desde) return false;
+    const buscado = f.name.toLowerCase();
+    const anotado = state.items.some(x => x.date >= desde && x.date <= t
+      && x.note.toLowerCase().includes(buscado));
+    return !anotado;
+  });
+}
+
+function renderFijos(info){
+  const row = document.getElementById('fijosRow');
+  const dev = fijosDebidos(info);
+  row.hidden = !dev.length;
+  if(!dev.length) return;
+  row.innerHTML = dev.map(f => `
+    <div class="fijo-item">
+      <span>${esc(f.name)} — ¿ya lo anotaste?</span>
+      <button class="ghost mini" data-fijo-log="${f.id}">Anotar</button>
+      <button class="link" data-fijo-x="${f.id}" aria-label="Ocultar hasta el mes que viene">×</button>
+    </div>`).join('');
+  row.querySelectorAll('[data-fijo-log]').forEach(b => b.onclick = () => {
+    const f = state.fijos.find(x => String(x.id) === b.dataset.fijoLog);
+    if(!f) return;
+    catSel = 'unico';
+    document.getElementById('note').value = f.name;
+    setView('hoy', false);
+    render();
+    document.getElementById('form').scrollIntoView({ behavior:'smooth', block:'center' });
+  });
+  row.querySelectorAll('[data-fijo-x]').forEach(b => b.onclick = () => {
+    const f = state.fijos.find(x => String(x.id) === b.dataset.fijoX);
+    if(!f) return;
+    f.silenced = info.p ? info.p.start : (todayISO().slice(0,7)+'-01');
+    save(); render();
+  });
+}
+
+function renderFijosAjustes(){
+  document.getElementById('fijosList').innerHTML = state.fijos.length
+    ? [...state.fijos].sort((a,b)=>a.day-b.day).map(f => `
+      <div class="item">
+        <span class="tag fijo">día ${f.day}</span>
+        <span class="desc">${esc(f.name)}</span>
+        ${blocked?'':`<button class="del del-fijo" data-fijo="${f.id}" aria-label="Borrar">×</button>`}
+      </div>`).join('')
+    : `<div class="empty">Todavía no cargaste ninguno.</div>`;
+  document.querySelectorAll('.del-fijo').forEach(b => b.onclick = () => {
+    state.fijos = state.fijos.filter(f => String(f.id) !== b.dataset.fijo);
+    save(); render();
+  });
+  document.getElementById('fijoAdd').disabled = blocked;
+}
+document.getElementById('fijoAdd').onclick = () => {
+  if(blocked) return;
+  const name = document.getElementById('fijoName').value.trim();
+  const day = Math.min(31, Math.max(1, parseNum(document.getElementById('fijoDay').value) || 0));
+  if(!name || !day) return;
+  state.fijos.push({ id:uid(), name, day, silenced:'' });
+  document.getElementById('fijoName').value = '';
+  document.getElementById('fijoDay').value = '';
+  save(); render();
+};
+
 /* ---------- el cobro: el ciclo nuevo se confirma, no arranca solo ----------
    Al pasar el día de cobro la app no da por hecho que la plata entró: pregunta.
    Lo que **no** hace es frenar el ciclo — los ciclos se derivan de la fecha y
@@ -2146,13 +2316,16 @@ document.getElementById('saldoOff').onclick = () => {
    cobrás otra cosa, ésa pasa a ser la referencia. No se guarda un cobro por
    ciclo — sería una segunda fuente de verdad al lado de `salary.amount`. */
 let cobroPaso = 1;
+/* Si el próximo cobro cambia de fecha: arranca cerrado, un link chico lo
+   abre. La mayoría de los meses no cambia nada, así que no suma un paso. */
+let cobroFechaAbierta = false;
 
 function cicloACobrar(){
   if(blocked || (estreno && !state.setup) || vista !== 'hoy') return null;
   if(state.dailyMode !== 'sueldo') return null;
   const s = state.salary;
   if(!s || !s.amount || !s.payday) return null;
-  const c = cicloDe(todayISO(), s.payday);
+  const c = cicloEfectivo(todayISO(), s.payday);
   if(s.cobrado === c.start) return null;         /* ya confirmó este ciclo */
   if(s.pospuesto === todayISO()) return null;    /* hoy dijo que todavía no */
   return c;
@@ -2161,8 +2334,8 @@ function cicloACobrar(){
 function renderCobro(){
   const c = cicloACobrar();
   const box = document.getElementById('cobro');
-  if(!c){ box.hidden = true; cobroPaso = 1; return; }
-  if(box.hidden) cobroPaso = 1;                  /* se abre siempre por el principio */
+  if(!c){ box.hidden = true; cobroPaso = 1; cobroFechaAbierta = false; return; }
+  if(box.hidden){ cobroPaso = 1; cobroFechaAbierta = false; }
   box.hidden = false;
   const uno = cobroPaso === 1;
   const s = state.salary;
@@ -2175,14 +2348,28 @@ function renderCobro(){
   document.getElementById('cobroAmount').hidden = uno;
   document.getElementById('cobroPaso1').hidden = !uno;
   document.getElementById('cobroPaso2').hidden = uno;
+  if(uno) return;
+  document.getElementById('cobroFechaRow').hidden = !cobroFechaAbierta;
+  document.getElementById('cobroFechaLink').textContent =
+    cobroFechaAbierta ? 'sigue el día de siempre' : 'el próximo cobro cambia de fecha';
+  const fEl = document.getElementById('cobroFecha');
+  const natural = cicloDe(todayISO(), s.payday).end;
+  if(!fEl.value) fEl.value = natural;
+  fEl.min = nextDay(c.start);
 }
 
 document.getElementById('cobroSi').onclick = () => {
   cobroPaso = 2;
+  cobroFechaAbierta = false;
   document.getElementById('cobroAmount').value = plain(state.salary.amount);
+  document.getElementById('cobroFecha').value = '';
   renderCobro();
 };
-document.getElementById('cobroBack').onclick = () => { cobroPaso = 1; renderCobro(); };
+document.getElementById('cobroFechaLink').onclick = () => {
+  cobroFechaAbierta = !cobroFechaAbierta;
+  renderCobro();
+};
+document.getElementById('cobroBack').onclick = () => { cobroPaso = 1; cobroFechaAbierta = false; renderCobro(); };
 /* Ocultarlo lo corre un día: mañana vuelve a preguntar. */
 document.getElementById('cobroNo').onclick = () => {
   state.salary = { ...state.salary, pospuesto: todayISO() };
@@ -2190,11 +2377,19 @@ document.getElementById('cobroNo').onclick = () => {
 };
 document.getElementById('cobroOk').onclick = () => {
   const monto = Math.max(0, parseNum(document.getElementById('cobroAmount').value));
-  const c = cicloDe(todayISO(), state.salary.payday);
-  state.salary = { ...state.salary,
+  const s = state.salary;
+  const c = cicloEfectivo(todayISO(), s.payday);
+  /* Lo que predice el día de siempre para el próximo cobro, sin mirar
+     ninguna corrección ya guardada — es la que se está por reemplazar. */
+  const natural = cicloDe(todayISO(), s.payday).end;
+  const fecha = document.getElementById('cobroFecha').value;
+  const nextOverride = (cobroFechaAbierta && fecha && fecha > c.start && fecha !== natural)
+    ? { natural, actual: fecha } : null;
+  state.salary = { ...s,
     /* vacío o cero: confirma lo que ya había, sin pisarlo con un 0 */
-    amount: monto > 0 ? monto : state.salary.amount,
-    cobrado: c.start, pospuesto: '' };
+    amount: monto > 0 ? monto : s.amount,
+    cobrado: c.start, pospuesto: '', nextOverride };
+  cobroFechaAbierta = false;
   save(); render();
 };
 document.getElementById('cobroAmount').addEventListener('keydown', e=>{
@@ -2545,6 +2740,19 @@ document.getElementById('wipe').onclick = () => {
   save(); render();
 };
 
+/* TEMPORAL: probar avisos nuevos, sin esperar la fecha real. Fuerza el
+   cartel de "¿Ya cobraste?" (si hay sueldo configurado) y un recordatorio de
+   gasto fijo (crea uno de prueba si todavía no hay ninguno cargado). Sacar
+   este handler y el botón #debugPreview del HTML una vez probado. */
+document.getElementById('debugPreview').onclick = () => {
+  if(state.salary && state.salary.amount) state.salary = { ...state.salary, cobrado:'', pospuesto:'' };
+  state.fijos = state.fijos.length
+    ? state.fijos.map(f => ({ ...f, silenced:'' }))
+    : [{ id:uid(), name:'prueba', day:1, silenced:'' }];
+  setView('hoy');
+  save(); render();
+};
+
 /* ---------- importar lo que se dictó por voz ----------
    Un atajo de iOS escribe una línea por gasto en un .txt:
 
@@ -2820,6 +3028,9 @@ function merge(remote){
        sin `??`: puede valer null, y el dispositivo que escribió último tiene
        que poder apagarlo en vez de quedarse pegado a una foto vieja. */
     saldo: remoteNewer ? (remote.saldo || null) : state.saldo,
+    /* Los gastos fijos van enteros, como los períodos: es configuración, y
+       medio fusionada entre dos dispositivos daría una lista sin sentido. */
+    fijos: remoteNewer ? (remote.fijos ?? state.fijos) : state.fijos,
     /* Estos dos no son configuración que se pisa: si de algún lado ya se eligió
        cómo usar la app, se eligió, y el aviso de exportar se queda con la fecha
        más nueva para no reaparecer en el dispositivo que ya lo ocultó. */
@@ -3096,7 +3307,7 @@ function onbGuardarSueldo(saldo){
   state.salary = {
     amount: onbDatos.sueldo, payday: onbDatos.dia, mode: onbDatos.modo,
     target: onbDatos.target,
-    cobrado: c.actual.start, pospuesto: '',
+    cobrado: c.actual.start, pospuesto: '', nextOverride: null,
     first: c.parcial ? { start:c.actual.start, end:c.actual.end, from:c.hoy,
                          amount:Math.max(0, int(saldo)) } : null
   };
