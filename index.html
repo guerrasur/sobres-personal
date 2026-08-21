@@ -255,6 +255,13 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .sheet .num-in{font-size:20px;font-family:var(--mono);font-weight:700;padding:12px}
 .sheet .box-copy:empty{display:none}
 .saldo-what{margin:10px 0 0;color:var(--violet)}
+/* la confirmación de lo que se acaba de hacer, para no dejar que el usuario
+   la infiera de la cuenta recalculada — que es lo que generaba la
+   confusión: parecía que la app había "olvidado" lo gastado. */
+.saldo-msg{margin:14px 0 0;padding:10px 12px;background:var(--teal-soft);color:var(--teal);
+  border-radius:var(--radius);font-weight:600}
+.saldo-msg[hidden]{display:none}
+#saldoReemplazarLink{display:block;margin-top:10px}
 /* los recordatorios de gastos fijos: una línea chica por cada uno, nunca un
    cartel — se pueden ignorar sin que la app insista. */
 .fijos-row{margin-top:8px;display:flex;flex-direction:column;gap:6px}
@@ -391,7 +398,7 @@ button.mini{font-size:12px;padding:5px 10px}
 .onb-alt:hover{color:var(--violet);opacity:1}
 .onb-alt.on{color:var(--violet);text-decoration:none}
 .onb-alt.on::before{content:'✓ '}
-#onbOk,#ceroOk,#cobroOk{width:100%;margin-top:20px;padding:13px 18px;font-size:15px}
+#onbOk,#ceroOk,#cobroOk,#saldoMas{width:100%;margin-top:20px;padding:13px 18px;font-size:15px}
 /* dos caminos, dos botones del mismo tamaño: no hay uno "correcto" */
 .onb-acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
 .onb-acts[hidden]{display:none}
@@ -478,6 +485,7 @@ summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-soft);lett
 .cfg{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
 .cfg > div{flex:1 1 150px}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.tools[hidden]{display:none}
 /* El prompt que aparece al bajar el CSV. El desplegable no lleva la separación
    del <details> grande de Ajustes, que es la que parte las secciones. El campo
    no pisa el font-size de arriba: abajo de 16px Safari hace zoom al enfocarlo. */
@@ -507,7 +515,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v6.2.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v6.3.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -550,9 +558,17 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <input class="num-in" id="saldoAmount" type="text" inputmode="numeric" placeholder="0"
              aria-labelledby="saldoTitle">
       <p class="box-copy saldo-what" id="saldoWhat"></p>
+      <p class="box-copy saldo-msg" id="saldoMsg" hidden></p>
+      <!-- Una sola acción a la vista: lo que escribís se suma a lo que ya
+           tenés. Es lo que se usa casi siempre (una changa, plata que
+           encontraste) y no se puede usar mal — reemplazar todo es el caso
+           raro, y por eso queda atrás de un link. -->
+      <button id="saldoMas">Sumar</button>
+      <button class="link" id="saldoReemplazarLink" aria-expanded="false" aria-controls="saldoReemplazarRow">reemplazar por otro número</button>
+      <div class="tools" id="saldoReemplazarRow" hidden>
+        <button class="ghost mini" id="saldoOk">Reemplazar</button>
+      </div>
       <div class="tools">
-        <button class="mini" id="saldoOk">Es lo que tengo</button>
-        <button class="mini" id="saldoMas">Sumarlo</button>
         <button class="ghost mini" id="saldoOff" hidden>Volver al cálculo de siempre</button>
       </div>
     </div>
@@ -2144,15 +2160,22 @@ document.getElementById('amount').addEventListener('keydown',e=>{ if(e.key==='En
 document.getElementById('note').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('add').click(); });
 
 /* ---------- la plata que hay ahora ----------
-   Un link chico abajo del número y un panel con un solo campo: cuánta plata
-   tenés. No es un ingreso más que se suma al tramo — reemplaza de dónde sale
-   el diario desde hoy hasta el próximo cobro.
+   Un botón fijo abajo y un panel con un solo campo: cuánta plata tenés. No es
+   un ingreso más que se suma al tramo — reemplaza de dónde sale el diario
+   desde hoy hasta el próximo cobro.
 
-   Sumar plata que entró después (una changa) es la misma acción y el mismo
-   campo: el panel llega con lo que la app calcula que te queda y el usuario le
-   suma lo que entró. Un segundo modo "sumar" sería otro camino para el mismo
-   número, y la app no lleva el saldo sola: lo dice el usuario. */
+   Una sola acción a la vista, "Sumar": es lo que se usa casi siempre (una
+   changa, plata que encontraste) y no se puede usar mal, porque nunca borra
+   lo que ya había. "Reemplazar por otro número" queda atrás de un link — es
+   el caso raro de fijar un número a mano — así no hay dos botones opuestos
+   uno al lado del otro esperando que te equivoques de cuál tocar. */
 let saldoAbierto = false;
+let saldoReemplazarAbierto = false;
+/* La confirmación de lo último que se hizo: sin esto, después de guardar el
+   panel se cerraba solo y lo único que veía el usuario, al volver a abrirlo,
+   era la cuenta ya recalculada — con "gastaste $0" porque la foto es nueva.
+   Sin decir qué pasó, eso se lee como que la app borró lo gastado. */
+let saldoMsg = '';
 
 /* El efecto se calcula con la cuenta de verdad —se prueba el saldo en el estado
    y se pregunta el diario—, en vez de repetir la fórmula acá: una segunda copia
@@ -2172,7 +2195,7 @@ function saldoHay(){
   return Math.max(0, i.ciclo ? i.ciclo.pool : i.calc ? i.calc.pool : 0);
 }
 
-/* Nadie elige a ciegas: los dos botones muestran su número antes de tocarlos. */
+/* Nadie elige a ciegas: el botón muestra su número antes de tocarlo. */
 function saldoEfecto(){
   const el = document.getElementById('saldoWhat');
   const v = document.getElementById('saldoAmount').value.trim();
@@ -2187,8 +2210,11 @@ function saldoEfecto(){
     const i = dailyInfo();
     return i.p ? ` hasta el ${dm(i.p.end)}` : '';
   };
-  el.innerHTML = `Es lo que tengo: <b>${esc(linea(monto))}</b>`
-    + `<br>Sumarlo a los ${esc(fmt(saldoHay()))}: <b>${esc(linea(saldoHay() + monto))}</b>${esc(hasta())}`;
+  let html = `Sumar da ${esc(fmt(saldoHay() + monto))}: <b>${esc(linea(saldoHay() + monto))}</b>${esc(hasta())}`;
+  if(saldoReemplazarAbierto){
+    html += `<br>Reemplazar da ${esc(fmt(monto))}: <b>${esc(linea(monto))}</b>${esc(hasta())}`;
+  }
+  el.innerHTML = html;
 }
 
 /* El link sólo donde hay un diario calculado que reemplazar: a mano lo fija el
@@ -2198,7 +2224,7 @@ function renderSaldo(info){
   /* Con la configuración a medias el período igual existe, y el botón tiene
      que estar: es la forma de decirle a la app cuánta plata hay. */
   const puede = modo && !blocked && !!info.p && todayISO() < info.p.end;
-  if(!puede) saldoAbierto = false;
+  if(!puede){ saldoAbierto = false; saldoReemplazarAbierto = false; saldoMsg = ''; }
   document.getElementById('saldoRow').hidden = !puede;
   document.getElementById('saldoOverlay').hidden = !saldoAbierto;
   const link = document.getElementById('saldoLink');
@@ -2209,45 +2235,75 @@ function renderSaldo(info){
   document.getElementById('saldoHint').textContent = info.saldo
     ? `Cargaste ${fmt(info.saldo.amount)} el ${dm(info.saldo.date)} y desde entonces gastaste ${fmt(saldoGastado())}: te quedan ${fmt(saldoHay())}.`
     : `Según lo que gastaste te quedan ${fmt(saldoHay())} para llegar al ${dm(info.p.end)}. Escribí cuánto tenés.`;
+  const msgEl = document.getElementById('saldoMsg');
+  msgEl.hidden = !saldoMsg;
+  msgEl.textContent = saldoMsg;
+  const reemplazarRow = document.getElementById('saldoReemplazarRow');
+  reemplazarRow.hidden = !saldoReemplazarAbierto;
+  const reemplazarLink = document.getElementById('saldoReemplazarLink');
+  reemplazarLink.setAttribute('aria-expanded', String(saldoReemplazarAbierto));
+  reemplazarLink.textContent = saldoReemplazarAbierto ? 'no, sumarlo nomás' : 'reemplazar por otro número';
   saldoEfecto();
 }
 
 /* scrollIntoView y nunca focus(): en iOS el foco programático no levanta el
    teclado y deja el campo activo de mentira. Ver CLAUDE.md. */
-document.getElementById('saldoLink').onclick = () => {
-  if(saldoAbierto){ saldoAbierto = false; render(); return; }
-  const info = dailyInfo();
+function abrirSaldo(){
+  saldoAbierto = true;
+  saldoReemplazarAbierto = false;
+  saldoMsg = '';
   /* Arranca vacío: el número que se escribe es el monto de la acción que se
      elija, y la línea de arriba ya dice cuánto hay. */
   document.getElementById('saldoAmount').value = '';
-  saldoAbierto = true;
   render();
-};
-document.getElementById('saldoClose').onclick = () => { saldoAbierto = false; render(); };
+}
+function cerrarSaldo(){
+  saldoAbierto = false;
+  render();
+}
+document.getElementById('saldoLink').onclick = () => { saldoAbierto ? cerrarSaldo() : abrirSaldo(); };
+document.getElementById('saldoClose').onclick = cerrarSaldo;
 /* Tocar afuera del panel lo cierra, como cualquier hoja que sale desde
    abajo — a diferencia de los carteles de cobro y de $0, éste no es
    obligatorio: nada se pierde por cerrarlo sin elegir nada. */
 document.getElementById('saldoOverlay').addEventListener('click', e => {
-  if(e.target.id === 'saldoOverlay'){ saldoAbierto = false; render(); }
+  if(e.target.id === 'saldoOverlay') cerrarSaldo();
 });
-document.getElementById('saldoAmount').addEventListener('input', saldoEfecto);
+document.getElementById('saldoReemplazarLink').onclick = () => {
+  saldoReemplazarAbierto = !saldoReemplazarAbierto;
+  render();
+};
+document.getElementById('saldoAmount').addEventListener('input', () => {
+  /* Escribir de nuevo dice que la confirmación anterior ya quedó atrás. */
+  if(saldoMsg){ saldoMsg = ''; document.getElementById('saldoMsg').hidden = true; }
+  saldoEfecto();
+});
 document.getElementById('saldoAmount').addEventListener('keydown', e=>{
-  if(e.key === 'Enter') document.getElementById('saldoOk').click();
+  if(e.key === 'Enter') document.getElementById('saldoMas').click();
 });
 milesInput(document.getElementById('saldoAmount'));
-/* Los dos caminos guardan la misma foto: uno la reemplaza y el otro le suma a
-   lo que la app calcula que queda. `saldoHay()` se lee antes de tocar el
-   estado, porque después ya no sería lo mismo. */
-function guardarSaldo(fn){
+/* Guarda la foto y se queda abierto mostrando qué pasó — cerrarse solo era
+   lo que dejaba la confirmación librada a que el usuario la infiriera de la
+   cuenta ya recalculada, y ahí "gastaste $0" se leía como un borrado. */
+function guardarSaldo(fn, mensaje){
   const el = document.getElementById('saldoAmount');
   if(el.value.trim() === '') return;      /* vacío no borra lo que ya había */
   const monto = Math.max(0, parseNum(el.value));
-  state.saldo = { date: todayISO(), amount: Math.max(0, fn(monto)), ts: Date.now() };
-  saldoAbierto = false;
+  const nuevo = Math.max(0, fn(monto));
+  state.saldo = { date: todayISO(), amount: nuevo, ts: Date.now() };
+  saldoMsg = mensaje(monto, nuevo);
+  saldoReemplazarAbierto = false;
+  el.value = '';
   save(); render();
 }
-document.getElementById('saldoOk').onclick = () => guardarSaldo(m => m);
-document.getElementById('saldoMas').onclick = () => guardarSaldo(m => saldoHay() + m);
+document.getElementById('saldoMas').onclick = () => guardarSaldo(
+  m => saldoHay() + m,
+  (monto, nuevo) => `Sumaste ${fmt(monto)}: ahora tenés ${fmt(nuevo)}.`
+);
+document.getElementById('saldoOk').onclick = () => guardarSaldo(
+  m => m,
+  (monto, nuevo) => `Reemplazaste: ahora tenés ${fmt(nuevo)}.`
+);
 /* Se vuelve al cálculo de siempre borrando la foto: no queda de registro,
    porque no hay nada que registrar — es un número que el usuario dictó. */
 document.getElementById('saldoOff').onclick = () => {
