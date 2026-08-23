@@ -22,8 +22,8 @@ común de un sueldo fijo: el usuario dice cuánto cobra y **qué día del mes**,
 salen solos de ahí — ver "El modo sueldo" más abajo.
 
 ```
-sobre diario = (ingresos del período − todo lo anotado desde el arranque)
-               ÷ días que faltan hasta el fin del período
+tope de hoy = (ingresos del período − todo lo anotado hasta ayer)
+              ÷ días que faltan hasta el fin del período, hoy incluido
 ```
 
 **Un solo sobre y nada de presupuestos.** Las tres categorías descuentan de la misma
@@ -36,19 +36,38 @@ día —la tira de la semana y los días cerrados—: ahí `delSobre()` saltea l
 porque una compra puntual no es el ritmo de ese día y pintarla contra el sobre dejaba la
 semana ilegible.
 
-Se recalcula en cada render, así que un gasto cargado a mitad de camino baja el diario del
-resto de los días al instante. Ese es el comportamiento central: si el usuario compra algo
-de 38.000, quiere ver ya cuánto le queda por día hasta el final.
+**El tope de hoy se fija una sola vez, al empezar el día, y no se mueve mientras se
+anota.** Hasta la v6.4.0 se recalculaba en cada render —un gasto a mitad de camino bajaba
+el diario del resto de los días al instante—, pero eso volvía ilegible la relación entre
+lo anotado y lo que quedaba: un café podía bajar el número mientras se estaba pagando
+otro café. Ahora `gastado` corta **antes** de hoy (`x.date < today`, no `< p.end`), así que
+el tope no se entera de nada de lo que se anota en el día — recién al otro día, cuando "hoy"
+pasa a ser "ayer", entra en la cuenta y el tope se recalcula solo. No hace falta guardar
+nada nuevo para esto: es la misma fórmula de siempre, con el corte movido un día.
 
-**Lo de hoy también entra en la resta.** El número grande no es "lo que queda del sobre de
-hoy" sino **cuánto se puede gastar por día de acá al fin**, así que cada gasto lo baja
-apenas en vez de hundir el día: una sesión de 40.000 contra un sobre de 5.555 dejaba el día
-en −39.615 y la app dejaba de decir nada. Ahora el número **nunca queda negativo**; cuando
-llega a cero es porque no queda plata, y ahí aparece el cartel de "Llegaste a $0".
+**Se muestran dos números lado a lado, sin texto que los explique**: a la izquierda,
+grande, lo que se anotó hoy (arranca en $0 y sube con cada gasto); a la derecha, más chico,
+el tope fijado para hoy — `$4.000 /$3.000`, nunca "gastaste X de Y". El número de la
+izquierda cambia de color según qué tan cerca está del tope: `--teal` por debajo del 70%,
+`--ochre` entre 70% y 100%, `--clay` al igualarlo o pasarlo — pasarse no mueve el tope, sólo
+cambia el color; el ajuste llega recién mañana.
 
-El rótulo dice cuál de los tres números es: **"Por día"** con un período, **"Queda hoy"** a
-mano —ahí sí es el sobre del día, porque el monto lo fijó el usuario y no hay nada que
-repartir— y **"Gastaste hoy"** sin límite.
+Esto no cambia el reparto: el sobrante de un día frugal se sigue diluyendo entre los días
+que quedan y un exceso lo sigue pagando el resto del período — la misma cuenta de "El
+sobrante se reparte entre los días que faltan" más abajo, sólo que el ajuste ahora pasa una
+vez por día y no en cada gasto. Lo que sí queda igual siempre: gastar de más el **último**
+día de un período no se arrastra al siguiente — cada período arranca limpio de su propia
+plata, y ese exceso sólo queda anotado en el resumen (`periodTally`).
+
+El rótulo es siempre **"Gastaste hoy"**, en los tres modos con tope (auto, sueldo, manual):
+la etiqueta ocre al lado (`dailyBadge`) dice de dónde sale ese tope —"a mano", "saldo",
+"parcial"— y nunca hace falta un rótulo distinto para eso. Sin límite (`'none'`) el número
+es el mismo "Gastaste hoy" pero sin tope al lado: no hay nada contra qué compararlo.
+
+`saldoHay()` (lo que se muestra en el panel de "la plata que hay ahora") y el disparador del
+cartel de "Llegaste a $0" siguen siendo **en tiempo real**: le restan lo gastado hoy al tope
+fijo, porque preguntan "¿cuánta plata queda de verdad ahora mismo?", no "¿cuál es el tope de
+hoy?". Son dos preguntas distintas y cada una usa su propia cuenta.
 
 La fecha de fin es el día del próximo cobro: arranca el período siguiente y **no** cuenta
 como día de este. Hoy sí cuenta. El diario nunca se muestra negativo; si lo anotado se
@@ -118,10 +137,11 @@ todos los días del período que hayan quedado abiertos, incluidos los huecos de
 medianoche. El día de hoy nunca se cierra.
 
 De cada día se guarda sólo `{date, envelope}`. El sobre es lo único irrecuperable después
-— el diario calculado se mueve con cada gasto —, mientras que lo gastado se lee de
-`items` en cada render. Así, anotar hoy un café de ayer corrige el cierre de ayer en vez
-de dejarlo mintiendo. No guardar el `diff` es a propósito: sería una segunda fuente de
-verdad que se desincroniza.
+— el tope de un día cerrado no se puede recalcular desde `items`, porque la cuenta de hoy
+corta lo gastado justo antes de hoy y ya no sabe qué tope regía un día anterior —, mientras
+que lo gastado se lee de `items` en cada render. Así, anotar hoy un café de ayer corrige el
+cierre de ayer en vez de dejarlo mintiendo. No guardar el `diff` es a propósito: sería una
+segunda fuente de verdad que se desincroniza.
 
 Un cierre retroactivo usa el sobre de hoy, porque no hay registro de cuál regía ese día.
 Los días que se cierran uno por uno, con la app abriéndose a diario, son exactos.
@@ -140,8 +160,8 @@ cortarse contra el ancho— cuánto se gastó de cuánto. Con eso alcanza; el p�
 explicaba el mecanismo se fue.
 
 `dailyMode` puede ser `'auto'`, `'manual'`, `'sueldo'` o `'none'`. En manual aparece la etiqueta ocre
-"a mano" al lado de "Queda hoy", y "saldo" cuando rige la plata cargada a mano: nunca hay
-que dejar ambiguo de dónde sale el monto, pero tampoco hay que tratarlo como un estado a
+"a mano" al lado de "Gastaste hoy", y "saldo" cuando rige la plata cargada a mano: nunca hay
+que dejar ambiguo de dónde sale el tope, pero tampoco hay que tratarlo como un estado a
 medio configurar. Cuando no hay con qué calcular
 (sin período, período vencido, sin ingresos) el diario **no** se inventa: se muestra "—" y
 una línea corta de qué falta, de una oración, nunca instrucciones.
