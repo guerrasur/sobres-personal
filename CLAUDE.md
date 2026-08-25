@@ -78,6 +78,21 @@ Tocar el número grande abre la cuenta (`renderWhy`) con cada término, hasta lo
 hoy. El número tiene que poder auditarse desde la app, no de memoria. Es el **único**
 lugar donde se explica de dónde sale: nunca fijo en pantalla.
 
+## El texto, siempre el mínimo
+
+El diseño se tiene que entender solo. Cada cambio nuevo — no sólo lo que ya existe — se
+mide con esta vara antes de darse por terminado:
+
+- Si un botón, un campo o un número ya dicen lo que hacen, no se les suma una frase al
+  lado que lo repita.
+- Cuando hace falta aclarar algo, es lo más corto posible: una palabra si alcanza, nunca
+  un párrafo. Nada de lenguaje explicativo o de manual ("esto sirve para...", "acá podés
+  cargar...").
+- Nada de tono charla ni de relleno. Directo, como el resto de los textos de la app.
+
+Esto viene pasando y se corrigió varias veces: antes de sumar un texto, la pregunta es si
+hace falta, no si queda claro.
+
 ## La pantalla principal son tres cosas
 
 La app se abre para anotar un gasto y cerrarla. La vista `Hoy` tiene tres cosas y nada
@@ -231,17 +246,14 @@ es. `first` deja de regir solo cuando pasa el próximo cobro; no se borra, queda
 Faltan seis días para cobrar y en el bolsillo quedan 90.000. El diario que sale de repartir
 el sueldo desde el arranque del ciclo ya no dice nada: lo que importa es que esos 90.000
 lleguen. Para eso, abajo del número grande hay un link chico —**reingresar lo que me
-queda**— que abre un panel de un solo campo, más un segundo campo opcional para anotar de
-dónde salió esa plata (una changa, lo que quedó de un ahorro).
+queda**— que abre un panel de un solo campo.
 
 ```json
 "saldo": { "date": "2026-09-12", "amount": 90000, "ts": 1789200000000, "note": "changa" }
 ```
 
-`note` es igual de opcional que la nota de un gasto y cumple el mismo rol: de dónde salió
-la plata, no un dato que la cuenta necesite. Vacío no borra el que ya había — igual que el
-monto —, y viaja con la foto: se ve en el link ("Cargaste $90.000 (changa) el 12/9…") y en
-la cuenta que se abre al tocar el número, junto a la fecha.
+`note` es opcional, como la nota de un gasto: de dónde salió esa plata, nunca un dato que
+la cuenta use. Viaja con la foto y se ve donde se explica el saldo.
 
 Es una **foto**: el día `date`, a la hora `ts`, el usuario tenía `amount` para llegar al
 fin. **No es un ingreso más que se suma al tramo**: reemplaza de dónde sale el diario desde
