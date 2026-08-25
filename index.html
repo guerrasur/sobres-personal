@@ -521,7 +521,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v6.5.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v6.6.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -652,37 +652,14 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 </div>
 
-<!-- Resumen: la semana, los días cerrados, el mes, todo lo anotado y los ajustes. -->
+<!-- Resumen: la semana, los días cerrados, el mes, todo lo anotado y los ajustes.
+     Cobro y ciclo va primero: de cuándo cobrás sale el diario entero, y es lo que
+     más se vuelve a tocar — no tiene sentido que quede abajo de todo, adentro del
+     acordeón de Ajustes, junto con el tema o la sincronización. -->
 <div class="view" id="viewMas" hidden>
 
-  <section id="secWeek">
-    <div class="h-row"><h2>La semana</h2><span class="eyebrow" id="weekRange"></span></div>
-    <div class="strip" id="strip"></div>
-    <div class="strip-legend" id="weekLeft"></div>
-  </section>
-
-  <section id="tally" hidden>
-    <div class="h-row"><h2>Cómo vino cada día</h2><span class="t-v num" id="tallyNet">—</span></div>
-    <div id="tallyList"></div>
-  </section>
-
-  <section>
-    <div class="h-row"><h2>Este mes</h2><span class="eyebrow" id="monthName"></span></div>
-    <div class="totals">
-      <div class="tot violet"><div class="k">Del día</div><div class="v num" id="mDiario">—</div></div>
-      <div class="tot teal"><div class="k">Transporte</div><div class="v num" id="mTransporte">—</div></div>
-      <div class="tot ochre"><div class="k">Aparte</div><div class="v num" id="mUnico">—</div></div>
-      <div class="tot"><div class="k">Total</div><div class="v num" id="mTotal">—</div></div>
-    </div>
-  </section>
-
-  <section>
-    <div class="h-row"><h2>Todo lo anotado</h2><span class="eyebrow" id="count"></span></div>
-    <div id="list"></div>
-  </section>
-
-  <details>
-    <summary>Ajustes y respaldo</summary>
+  <section id="secCiclo" hidden>
+    <div class="h-row"><h2>Cobro y ciclo</h2></div>
 
     <!-- De cobro a cobro: el usuario dice cuánto cobra y qué día, y los ciclos
          los arma la app. Editar cualquiera de estos campos recalcula el diario
@@ -693,9 +670,9 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
         <span class="eyebrow" id="salCiclo"></span>
       </div>
       <p class="box-copy">El mes de la app va de un cobro al otro. Los días los cuenta el calendario: un ciclo puede tener 28, 29, 30 o 31.</p>
+      <p class="onb-dia">cobrás el día <input class="onb-dia-in" id="salDia" type="text" inputmode="numeric" maxlength="2" aria-label="Día del mes en que cobrás"> de cada mes</p>
       <div class="cfg">
         <div><label for="salAmount">Sueldo del mes</label><input class="num-in" id="salAmount" type="text" inputmode="numeric"></div>
-        <div><label for="salDia">Día que cobrás</label><input class="num-in" id="salDia" type="text" inputmode="numeric"></div>
         <div><label for="salMode">Prefiero fijar</label>
           <select id="salMode">
             <option value="ahorro">Cuánto ahorro</option><option value="diario">Cuánto gasto por día</option>
@@ -730,6 +707,38 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
         <button class="ghost mini" id="pDel">Borrar tramo</button>
       </div>
     </div>
+
+    <p class="box-copy">El modo —calculado, sueldo, a mano o sin límite— se cambia en <b>Ajustes y respaldo</b>, más abajo.</p>
+  </section>
+
+  <section id="secWeek">
+    <div class="h-row"><h2>La semana</h2><span class="eyebrow" id="weekRange"></span></div>
+    <div class="strip" id="strip"></div>
+    <div class="strip-legend" id="weekLeft"></div>
+  </section>
+
+  <section id="tally" hidden>
+    <div class="h-row"><h2>Cómo vino cada día</h2><span class="t-v num" id="tallyNet">—</span></div>
+    <div id="tallyList"></div>
+  </section>
+
+  <section>
+    <div class="h-row"><h2>Este mes</h2><span class="eyebrow" id="monthName"></span></div>
+    <div class="totals">
+      <div class="tot violet"><div class="k">Del día</div><div class="v num" id="mDiario">—</div></div>
+      <div class="tot teal"><div class="k">Transporte</div><div class="v num" id="mTransporte">—</div></div>
+      <div class="tot ochre"><div class="k">Aparte</div><div class="v num" id="mUnico">—</div></div>
+      <div class="tot"><div class="k">Total</div><div class="v num" id="mTotal">—</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="h-row"><h2>Todo lo anotado</h2><span class="eyebrow" id="count"></span></div>
+    <div id="list"></div>
+  </section>
+
+  <details>
+    <summary>Ajustes y respaldo</summary>
 
     <!-- Alquiler, servicios, suscripciones: gastos que se repiten cada mes,
          casi siempre el mismo día. No se declara un monto — la app no le
@@ -1736,8 +1745,11 @@ function render(){
   campo('cfgStart', state.weekStart);
   /* Sin límite no hay tramos ni ingresos, y de cobro a cobro los tramos los
      arma la app: en los dos casos no se piden ni se muestran. */
-  document.getElementById('boxPeriod').hidden = !!info.none || state.dailyMode === 'sueldo';
-  document.getElementById('boxSalary').hidden = state.dailyMode !== 'sueldo';
+  const boxPeriodHidden = !!info.none || state.dailyMode === 'sueldo';
+  const boxSalaryHidden = state.dailyMode !== 'sueldo';
+  document.getElementById('boxPeriod').hidden = boxPeriodHidden;
+  document.getElementById('boxSalary').hidden = boxSalaryHidden;
+  document.getElementById('secCiclo').hidden = boxPeriodHidden && boxSalaryHidden;
   renderPeriod();
   renderSalary(info);
 }
