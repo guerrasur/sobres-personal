@@ -266,6 +266,7 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.02em}
 .saldo-msg{margin:14px 0 0;padding:10px 12px;background:var(--teal-soft);color:var(--teal);
   border-radius:var(--radius);font-weight:600}
 .saldo-msg[hidden]{display:none}
+#saldoNote{margin-top:9px}
 #saldoReemplazarLink{display:block;margin-top:10px}
 /* los recordatorios de gastos fijos: una línea chica por cada uno, nunca un
    cartel — se pueden ignorar sin que la app insista. */
@@ -520,7 +521,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 <div class="wrap">
 
 <header>
-  <div class="brand"><h1>Sobres</h1><span class="ver">v6.4.0</span></div>
+  <div class="brand"><h1>Sobres</h1><span class="ver">v6.5.0</span></div>
   <nav class="tabs">
     <button class="tab on" id="tabHoy">Hoy</button>
     <button class="tab" id="tabMas">Resumen</button>
@@ -565,6 +566,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
       <p class="box-copy" id="saldoHint"></p>
       <input class="num-in" id="saldoAmount" type="text" inputmode="numeric" placeholder="0"
              aria-labelledby="saldoTitle">
+      <input id="saldoNote" type="text" placeholder="de dónde sale (opcional)" aria-label="De dónde sale">
       <p class="box-copy saldo-what" id="saldoWhat"></p>
       <p class="box-copy saldo-msg" id="saldoMsg" hidden></p>
       <!-- Una sola acción a la vista: lo que escribís se suma a lo que ya
@@ -906,7 +908,7 @@ footer{margin-top:30px;font-size:12px;color:var(--ink-soft);line-height:1.6}
 
 <script>
 const KEY = 'sobres.v1';
-const SCHEMA = 12;
+const SCHEMA = 13;
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
 const plain = n => new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n||0);
 const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -1208,6 +1210,7 @@ function migrate(raw){
   if(from < 10) d = up9to10(d);
   if(from < 11) d = up10to11(d);
   if(from < 12) d = up11to12(d);
+  if(from < 13) d = up12to13(d);
   return {ok:true, from, migrated:from < SCHEMA, state:normalize(d)};
 }
 
@@ -1314,6 +1317,13 @@ function up11to12(d){
   return { ...d, schema:12, fijos:[] };
 }
 
+/* `saldo.note` es nuevo: de dónde salió esa plata (una changa, lo que quedó
+   de un ahorro). Los datos viejos no lo tienen, y no hay de dónde inventarlo
+   — queda vacío hasta que el usuario cargue el próximo saldo. */
+function up12to13(d){
+  return { ...d, schema:13, saldo: d.saldo ? { ...d.saldo, note:'' } : d.saldo };
+}
+
 /* El sueldo se reconstruye campo por campo, como todo lo demás. Si viene roto o
    a medias queda en null, y ahí el modo sueldo muestra "—" con una línea de qué
    falta en vez de inventar un número. */
@@ -1364,7 +1374,7 @@ function normFijos(arr){
 function normSaldo(s){
   if(!s || typeof s !== 'object' || Array.isArray(s) || !s.date) return null;
   return { date:String(s.date).slice(0,10), amount:Math.max(0, int(s.amount)),
-           ts:Math.max(0, int(s.ts)) };
+           ts:Math.max(0, int(s.ts)), note:String(s.note||'').trim().slice(0,140) };
 }
 
 function normalize(d){
@@ -1804,7 +1814,7 @@ function renderWhy(info){
     rows.push(r('Lo fijaste vos', fmt(state.daily), 'mid'));
   }else if(info.ciclo){
     const k = info.ciclo;
-    rows.push(r(k.saldo ? `La plata que cargaste el ${dm(k.saldo.date)}`
+    rows.push(r(k.saldo ? `La plata que cargaste el ${dm(k.saldo.date)}${k.saldo.note ? ' ('+esc(k.saldo.note)+')' : ''}`
               : k.parcial ? 'La plata que tenías' : 'Sueldo del mes', '+ ' + fmt(k.entra)));
     if(k.ahorro > 0) rows.push(r('Lo que querés ahorrar', '− ' + fmt(k.ahorro)));
     if(k.gastado > 0) rows.push(r(`Lo que anotaste desde el ${dm(k.repDesde)} hasta ayer`, '− ' + fmt(k.gastado)));
@@ -1824,7 +1834,7 @@ function renderWhy(info){
     rows.push(`<div class="why-note">${esc(info.why||'')}</div>`);
   }else{
     rows.push(c.saldo
-      ? r(`La plata que cargaste el ${dm(c.saldo.date)}`, '+ ' + fmt(c.entra))
+      ? r(`La plata que cargaste el ${dm(c.saldo.date)}${c.saldo.note ? ' ('+esc(c.saldo.note)+')' : ''}`, '+ ' + fmt(c.entra))
       : r(`Lo que cobrás en el tramo (${p.incomes.length})`, '+ ' + fmt(c.income)));
     if(c.gastado > 0) rows.push(r(`Lo que anotaste desde el ${dm(c.desde)} hasta ayer`, '− ' + fmt(c.gastado)));
     if(c.gastado > 0) rows.push(r('Queda', fmt(c.pool), 'sum'));
@@ -2244,7 +2254,7 @@ function renderSaldo(info){
   if(!saldoAbierto) return;
   document.getElementById('saldoOff').hidden = !info.saldo;
   document.getElementById('saldoHint').textContent = info.saldo
-    ? `Cargaste ${fmt(info.saldo.amount)} el ${dm(info.saldo.date)} y desde entonces gastaste ${fmt(saldoGastado())}: te quedan ${fmt(saldoHay())}.`
+    ? `Cargaste ${fmt(info.saldo.amount)}${info.saldo.note ? ' ('+info.saldo.note+')' : ''} el ${dm(info.saldo.date)} y desde entonces gastaste ${fmt(saldoGastado())}: te quedan ${fmt(saldoHay())}.`
     : `Según lo que gastaste te quedan ${fmt(saldoHay())} para llegar al ${dm(info.p.end)}. Escribí cuánto tenés.`;
   const msgEl = document.getElementById('saldoMsg');
   msgEl.hidden = !saldoMsg;
@@ -2266,6 +2276,7 @@ function abrirSaldo(){
   /* Arranca vacío: el número que se escribe es el monto de la acción que se
      elija, y la línea de arriba ya dice cuánto hay. */
   document.getElementById('saldoAmount').value = '';
+  document.getElementById('saldoNote').value = '';
   render();
 }
 function cerrarSaldo(){
@@ -2301,10 +2312,12 @@ function guardarSaldo(fn, mensaje){
   if(el.value.trim() === '') return;      /* vacío no borra lo que ya había */
   const monto = Math.max(0, parseNum(el.value));
   const nuevo = Math.max(0, fn(monto));
-  state.saldo = { date: todayISO(), amount: nuevo, ts: Date.now() };
+  const noteEl = document.getElementById('saldoNote');
+  state.saldo = { date: todayISO(), amount: nuevo, ts: Date.now(), note: noteEl.value.trim().slice(0,140) };
   saldoMsg = mensaje(monto, nuevo);
   saldoReemplazarAbierto = false;
   el.value = '';
+  noteEl.value = '';
   save(); render();
 }
 document.getElementById('saldoMas').onclick = () => guardarSaldo(
